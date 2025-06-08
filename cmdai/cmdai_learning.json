@@ -34,5 +34,23 @@
     "WasAccepted": false,
     "WasSuccessful": false,
     "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "devtunnel",
+    "Query": "start hosting tunnels",
+    "Command": "\u0060ngrok http 8080\u0060",
+    "Timestamp": "2025-06-08T05:45:42.380871Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "powershell",
+    "Query": "show PATH env variable",
+    "Command": "echo $PATH",
+    "Timestamp": "2025-06-08T05:46:08.3507187Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
   }
 ]

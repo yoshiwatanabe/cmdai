@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using CmdAi.Core.Interfaces;
@@ -15,6 +16,16 @@ class Program
         var serviceProvider = services.BuildServiceProvider();
 
         var rootCommand = new RootCommand("AI-powered CLI assistant that translates natural language to CLI commands");
+
+        // Add custom version command (since --version is automatically handled)
+        var versionCommand = new Command("version", "Show version information");
+        versionCommand.SetHandler(() =>
+        {
+            ShowVersionInfo();
+            return Task.CompletedTask;
+        });
+        
+        rootCommand.AddCommand(versionCommand);
 
         var toolArg = new Argument<string>("tool", "The tool to get help with (e.g., git, az)");
         var queryArg = new Argument<string>("query", "Natural language description of what you want to do");
@@ -48,6 +59,20 @@ class Program
         rootCommand.AddCommand(askCommand);
 
         return await rootCommand.InvokeAsync(args);
+    }
+
+    static void ShowVersionInfo()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var version = assembly.GetName().Version;
+        var informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? version?.ToString();
+        var title = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title ?? "CmdAI";
+        
+        Console.WriteLine($"{title} v{informationalVersion}");
+        Console.WriteLine("AI-powered CLI assistant with local Ollama integration");
+        Console.WriteLine();
+        Console.WriteLine("Repository: https://github.com/yoshiwatanabe/cmdai");
+        Console.WriteLine("License: MIT");
     }
 
     static async Task HandleCommandAsync(ServiceProvider serviceProvider, CommandRequest request)

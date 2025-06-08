@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Extract version from tag or input
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Releasing version: $VERSION"
+        
+    - name: Update version in project file
+      run: |
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        PROJECT_FILE="cmdai/src/CmdAi.Cli/CmdAi.Cli.csproj"
+        
+        # Update version fields
+        sed -i "s|<Version>[^<]*</Version>|<Version>$VERSION</Version>|" "$PROJECT_FILE"
+        
+        # Update AssemblyVersion (major.minor.0.0)
+        MAJOR=$(echo $VERSION | cut -d. -f1)
+        MINOR=$(echo $VERSION | cut -d. -f2)
+        sed -i "s|<AssemblyVersion>[^<]*</AssemblyVersion>|<AssemblyVersion>$MAJOR.$MINOR.0.0</AssemblyVersion>|" "$PROJECT_FILE"
+        
+        # Update FileVersion (full version + .0)
+        sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$VERSION.0</FileVersion>|" "$PROJECT_FILE"
+        
+        echo "Updated project file with version $VERSION"
+        
+    - name: Restore dependencies
+      run: dotnet restore cmdai/CmdAi.sln
+      
+    - name: Build solution
+      run: dotnet build cmdai/CmdAi.sln --configuration Release --no-restore
+      
+    - name: Run tests
+      run: dotnet test cmdai/CmdAi.sln --configuration Release --no-build --verbosity normal
+      
+    - name: Pack NuGet package
+      run: |
+        cd cmdai/src/CmdAi.Cli
+        dotnet pack --configuration Release --output ./nupkg --no-build
+        
+    - name: Upload package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: cmdai/src/CmdAi.Cli/nupkg/*.nupkg
+        
+    - name: Publish to NuGet.org
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      run: |
+        cd cmdai/src/CmdAi.Cli/nupkg
+        dotnet nuget push *.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        
+    - name: Create GitHub Release
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: CmdAI v${{ steps.version.outputs.VERSION }}
+        body: |
+          ## CmdAI v${{ steps.version.outputs.VERSION }}
+          
+          ### Installation
+          ```bash
+          # Install or update CmdAI globally
+          dotnet tool install --global CmdAi.Cli
+          
+          # Or update existing installation
+          dotnet tool update --global CmdAi.Cli
+          ```
+          
+          ### What's New
+          See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+          
+          ### Ollama Setup
+          For AI features, see [OLLAMA_SETUP.md](cmdai/OLLAMA_SETUP.md) for setup instructions.
+        draft: false
+        prerelease: false

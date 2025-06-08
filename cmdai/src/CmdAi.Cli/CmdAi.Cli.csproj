@@ -6,6 +6,31 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>cmdai</AssemblyName>
+    
+    <!-- Versioning -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyTitle>CmdAI - AI-Powered CLI Assistant</AssemblyTitle>
+    <AssemblyInformationalVersion>1.0.0</AssemblyInformationalVersion>
+    
+    <!-- .NET Global Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>cmdai</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+    
+    <!-- Package Metadata -->
+    <PackageId>CmdAi.Cli</PackageId>
+    <Title>CmdAI - AI-Powered CLI Assistant</Title>
+    <Authors>Yoshi Watanabe</Authors>
+    <Description>An intelligent CLI assistant that translates natural language to CLI commands using local AI models with reliable pattern-matching fallback.</Description>
+    <PackageProjectUrl>https://github.com/yoshiwatanabe/cmdai</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yoshiwatanabe/cmdai</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>cli;ai;assistant;commands;natural-language;ollama;codellama</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +44,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CmdAi.Core\CmdAi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
