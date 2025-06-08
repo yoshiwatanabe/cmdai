@@ -6,13 +6,13 @@ namespace CmdAi.Core.Services;
 
 public class CommandExecutor : ICommandExecutor
 {
-    public async Task<bool> ConfirmExecutionAsync(CommandResult command)
+    public Task<bool> ConfirmExecutionAsync(CommandResult command)
     {
         Console.WriteLine();
         Console.Write($"Execute '{command.Command}'? (y/N): ");
         
         var input = Console.ReadLine()?.Trim().ToLowerInvariant();
-        return input == "y" || input == "yes";
+        return Task.FromResult(input == "y" || input == "yes");
     }
 
     public async Task<bool> ExecuteAsync(CommandResult command, CommandContext context)

@@ -22,7 +22,7 @@ public class ContextProvider : IContextProvider
         return new CommandContext(currentDirectory, isGitRepository, environment);
     }
 
-    private async Task<bool> IsGitRepositoryAsync(string directory)
+    private Task<bool> IsGitRepositoryAsync(string directory)
     {
         try
         {
@@ -32,16 +32,16 @@ public class ContextProvider : IContextProvider
             {
                 if (current.GetDirectories(".git").Any())
                 {
-                    return true;
+                    return Task.FromResult(true);
                 }
                 current = current.Parent;
             }
             
-            return false;
+            return Task.FromResult(false);
         }
         catch
         {
-            return false;
+            return Task.FromResult(false);
         }
     }
 }
