@@ -28,7 +28,7 @@ class Program
             await HandleCommandAsync(serviceProvider, request);
         }, toolArg, queryArg);
 
-        var directToolCommands = new[] { "git", "az" };
+        var directToolCommands = new[] { "git", "az", "azure" };
         foreach (var toolName in directToolCommands)
         {
             var directQueryArg = new Argument<string>("query", $"Natural language description of the {toolName} operation");
@@ -102,9 +102,21 @@ class Program
         var services = new ServiceCollection();
         
         services.AddSingleton<IContextProvider, ContextProvider>();
-        services.AddSingleton<ICommandResolver, GitCommandResolver>();
         services.AddSingleton<ICommandExecutor, CommandExecutor>();
         services.AddSingleton<ICommandRepository, InMemoryCommandRepository>();
+        
+        // Register individual resolvers
+        services.AddSingleton<GitCommandResolver>();
+        services.AddSingleton<AzureCommandResolver>();
+        
+        // Register composite resolver that combines all tool resolvers
+        services.AddSingleton<ICommandResolver>(provider =>
+        {
+            var gitResolver = provider.GetRequiredService<GitCommandResolver>();
+            var azureResolver = provider.GetRequiredService<AzureCommandResolver>();
+            
+            return new CompositeCommandResolver(new ICommandResolver[] { gitResolver, azureResolver });
+        });
 
         return services;
     }
