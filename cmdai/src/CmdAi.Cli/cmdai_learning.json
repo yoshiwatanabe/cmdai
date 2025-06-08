@@ -1,0 +1,38 @@
+[
+  {
+    "Tool": "docker",
+    "Query": "list running containers",
+    "Command": "docker ps --filter status=running",
+    "Timestamp": "2025-06-08T05:02:49.32098Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "devtunnel",
+    "Query": "start hosting",
+    "Command": "\u0060dotnet run --project CmdAi.Cli --hosting\u0060",
+    "Timestamp": "2025-06-08T05:03:39.8699757Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "git",
+    "Query": "how to undo last commit",
+    "Command": "git reset --soft HEAD~1",
+    "Timestamp": "2025-06-08T05:04:09.8334977Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "az",
+    "Query": "how to show list of key vaults",
+    "Command": "az keyvault list --output table",
+    "Timestamp": "2025-06-08T05:04:32.5363026Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  }
+]

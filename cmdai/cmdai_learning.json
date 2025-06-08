@@ -1,0 +1,38 @@
+[
+  {
+    "Tool": "git",
+    "Query": "status command",
+    "Command": "git status",
+    "Timestamp": "2025-06-08T04:23:15.4619203Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "az",
+    "Query": "list subscriptions",
+    "Command": "az account list --output table",
+    "Timestamp": "2025-06-08T04:24:06.5634243Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "git",
+    "Query": "undo last commit",
+    "Command": "git reset --soft HEAD~1",
+    "Timestamp": "2025-06-08T04:27:04.7111856Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "az",
+    "Query": "list resource groups",
+    "Command": "az group list --output table",
+    "Timestamp": "2025-06-08T04:27:06.8803084Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
+  }
+]

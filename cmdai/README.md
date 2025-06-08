@@ -1,39 +1,46 @@
 # CmdAI - AI-Powered CLI Assistant
 
-An extensible CLI assistant that translates natural language to CLI commands using pattern matching, with a clean architecture ready for future AI integration.
+An intelligent CLI assistant that translates natural language to CLI commands using local AI models with reliable pattern-matching fallback. Supports ANY command-line tool with learning capabilities.
 
 ## 🚀 What is CmdAI?
 
 CmdAI helps you run CLI commands using natural language. Instead of remembering exact command syntax, just describe what you want to do:
 
 ```bash
-# Git commands
+# Works with ANY CLI tool - powered by local AI with pattern fallback
 cmdai ask git "check the status"          → git status
 cmdai git "undo last commit"              → git reset --soft HEAD~1  
-cmdai ask git "add all files"             → git add .
-cmdai ask git "show me the history"       → git log --oneline
+cmdai ask docker "show running containers" → docker ps
+cmdai kubectl "get all pods in default namespace" → kubectl get pods -n default
 
-# Azure CLI commands
+# Azure CLI commands  
 cmdai ask az "list subscriptions"         → az account list --output table
 cmdai az "show current subscription"      → az account show
 cmdai ask az "list storage accounts"      → az storage account list --output table
 cmdai ask az "create resource group MyRG" → az group create --name "MyRG" --location eastus
+
+# Even tools without pre-defined patterns work via AI
+cmdai ask npm "install package as dev dependency" → npm install --save-dev
+cmdai yarn "show outdated packages" → yarn outdated
 ```
 
 ## 🏗️ Architecture
 
-**Command Pipeline**: User Input → Intent Parser → Command Resolver → Executor → Output
+**AI-First Pipeline**: User Input → AI Command Resolver → Safety Validation → Execution → Learning Feedback
 
-### Core Interfaces
-- **`ICommandResolver`**: Resolves natural language to commands
-- **`ICommandExecutor`**: Executes commands with user confirmation  
-- **`IContextProvider`**: Provides execution context (git repo detection, etc.)
-- **`ICommandRepository`**: Repository pattern for future web-sourced commands
+### Core Components
+- **`AICommandResolver`**: Primary resolver using local AI models (Ollama/CodeLlama)
+- **`PatternCommandResolver`**: Reliable fallback using regex patterns for Git/Azure CLI
+- **`CommandValidator`**: Safety checking for dangerous operations
+- **`LearningService`**: Continuous improvement from user feedback
+- **`OllamaAIProvider`**: Local AI integration with no data leaving your machine
 
-### Current Implementation
-- **Phase 1**: Pattern-based resolver using regex matching
-- **Phase 2** (planned): AI-powered command resolution
-- **Extensible**: Easy to add new tools (Azure CLI, Docker, etc.)
+### AI-Powered Features ✨
+- **Universal Tool Support**: Works with any CLI tool via AI understanding
+- **Smart Fallback**: Falls back to proven patterns when AI is unavailable
+- **Safety First**: Validates and warns about potentially dangerous commands
+- **Continuous Learning**: Improves suggestions based on your usage patterns
+- **Privacy Focused**: All AI processing happens locally via Ollama
 
 ## 📖 CLI Syntax
 
@@ -51,16 +58,30 @@ cmdai azure "list storage accounts"
 
 ## ✨ Features
 
-- **Safe Execution**: User confirmation before running commands
-- **Context Aware**: Detects git repositories and working directory
-- **Pattern Matching**: 30+ command patterns for Git and Azure CLI supported
-- **Extensible**: Clean architecture for adding new tools
-- **Cross-platform**: Works on Windows, macOS, and Linux
+- **🤖 AI-Powered**: Local AI models generate commands for ANY CLI tool
+- **🛡️ Safety First**: Command validation and dangerous operation detection  
+- **🔄 Smart Fallback**: Reliable pattern matching when AI is unavailable
+- **📚 Continuous Learning**: Improves from your usage patterns and feedback
+- **🔒 Privacy Focused**: All processing happens locally - no data sent to cloud
+- **⚡ Context Aware**: Detects git repositories and working directory
+- **🌐 Universal Support**: Works with git, docker, kubectl, npm, az, and more
+- **🚀 Cross-platform**: Works on Windows, macOS, and Linux
 
 ## 🛠️ Installation & Usage
 
 ### Prerequisites
 - .NET 8.0 SDK or later
+- **For AI features**: [Ollama](https://ollama.ai) with CodeLlama model
+  
+  **📖 Complete Setup Guide**: See [OLLAMA_SETUP.md](OLLAMA_SETUP.md) for detailed installation instructions
+  
+  **Quick Start:**
+  ```bash
+  # Install Ollama and download CodeLlama
+  curl -fsSL https://ollama.ai/install.sh | sh
+  ollama pull codellama:7b
+  ollama serve  # Runs on localhost:11434
+  ```
 
 ### Build & Run
 ```bash
@@ -125,26 +146,50 @@ cmdai ask git "status command"
 - [x] Context awareness (git repo detection)
 - [x] Composite resolver supporting multiple tools
 
-### Phase 2: AI Integration (Planned)
-- [ ] OpenAI/Claude integration for command resolution
-- [ ] Learning from user corrections
-- [ ] Support for complex, multi-step operations
-- [ ] Natural language explanations of commands
+### Phase 2: AI Integration ✅ **COMPLETED**
+- [x] **Local AI integration via Ollama**
+- [x] **CodeLlama model for command generation**
+- [x] **Smart fallback to pattern matching**
+- [x] **Command safety validation**
+- [x] **Learning from user feedback**
+- [x] **Universal CLI tool support**
+- [x] **Privacy-focused local processing**
 
-### Phase 3: Extended Tool Support (Planned)
-- [x] Azure CLI (`az`) commands ✅
-- [ ] Docker commands
-- [ ] kubectl (Kubernetes) commands  
-- [ ] npm/yarn package manager commands
-- [ ] Web-sourced command repository
+### Phase 3: Enhanced AI Features (Next)
+- [ ] Multi-step command sequences ("deploy my app")
+- [ ] Command explanation and learning modes
+- [ ] Integration with other local AI models (LLaMA, Mistral)
+- [ ] Web UI for command history and learning management
+- [ ] Plugin system for custom command resolvers
+- [ ] Shell integration and auto-completion
 
 ## 🤝 Contributing
 
 Contributions are welcome! The codebase is designed to be easily extensible:
 
-1. **Adding new tools**: Implement `ICommandResolver` for your tool
-2. **Adding patterns**: Extend the pattern list in `GitCommandResolver`
-3. **AI integration**: Replace pattern matching with AI in `ICommandResolver`
+1. **Adding new AI providers**: Implement `IAIProvider` for your preferred model
+2. **Adding patterns**: Extend pattern lists in existing resolvers for better fallback
+3. **Improving safety**: Add validation rules in `CommandValidator`
+4. **Enhancing learning**: Improve the feedback loop in `LearningService`
+
+## ⚙️ Configuration
+
+CmdAI can be configured via `appsettings.json`:
+
+```json
+{
+  "AI": {
+    "EnableAI": true,
+    "Provider": "ollama",
+    "ModelName": "codellama:7b",
+    "OllamaEndpoint": "http://localhost:11434",
+    "TimeoutSeconds": 30,
+    "FallbackToPatterns": true,
+    "EnableLearning": true,
+    "ConfidenceThreshold": 0.7
+  }
+}
+```
 
 ## 📄 License
 
