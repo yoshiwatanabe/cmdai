@@ -28,12 +28,32 @@ cmdai yarn "show outdated packages" → yarn outdated
 
 **AI-First Pipeline**: User Input → AI Command Resolver → Safety Validation → Execution → Learning Feedback
 
+```mermaid
+flowchart TD
+    A[👤 User Input] --> B[🖥️ CLI Interface]
+    B --> C{🤖 AI Available?}
+    C -->|Yes| D[🧠 AI Command Resolver]
+    C -->|No| E[📋 Pattern Resolver]
+    
+    D --> F[🛡️ Safety Validator]
+    E --> F
+    F --> G[⚡ Command Executor]
+    G --> H[📚 Learning Service]
+    
+    style D fill:#e3f2fd
+    style E fill:#fff3e0
+    style F fill:#e8f5e8
+    style H fill:#fce4ec
+```
+
 ### Core Components
 - **`AICommandResolver`**: Primary resolver using local AI models (Ollama/CodeLlama)
 - **`PatternCommandResolver`**: Reliable fallback using regex patterns for Git/Azure CLI
 - **`CommandValidator`**: Safety checking for dangerous operations
 - **`LearningService`**: Continuous improvement from user feedback
 - **`OllamaAIProvider`**: Local AI integration with no data leaving your machine
+
+**📊 [View Detailed Architecture](../ARCHITECTURE.md)** - Complete technical diagrams and design patterns
 
 ### AI-Powered Features ✨
 - **Universal Tool Support**: Works with any CLI tool via AI understanding

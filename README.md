@@ -47,6 +47,7 @@ cmdai az "show current subscription"      → az account show
 |----------|-------------|
 | **[Installation & Setup](cmdai/README.md)** | Comprehensive setup guide and usage examples |
 | **[Ollama Setup](cmdai/OLLAMA_SETUP.md)** | Complete guide for AI integration with local models |
+| **[Architecture & Design](ARCHITECTURE.md)** | Visual diagrams and technical architecture details |
 | **[Versioning Guide](VERSIONING.md)** | Development workflow and release process |
 
 ## 🛠️ AI Setup (Optional but Recommended)
@@ -72,12 +73,31 @@ Without AI setup, CmdAI falls back to reliable pattern matching for Git and Azur
 
 **AI-First Pipeline**: User Input → AI Command Resolver → Safety Validation → Execution → Learning Feedback
 
+```mermaid
+graph LR
+    User[👤 User] --> CLI[🖥️ CLI]
+    CLI --> AIResolver[🤖 AI Resolver]
+    AIResolver --> Ollama[🦙 Ollama/CodeLlama]
+    AIResolver --> Fallback[📋 Pattern Fallback]
+    
+    AIResolver --> Validator[🛡️ Safety Validator]
+    Validator --> Executor[⚡ Executor]
+    Executor --> Learning[📚 Learning Service]
+    
+    style AIResolver fill:#e3f2fd
+    style Ollama fill:#f3e5f5
+    style Validator fill:#e8f5e8
+    style Learning fill:#fce4ec
+```
+
 ### Core Components
 - **`AICommandResolver`**: Primary resolver using local AI models (Ollama/CodeLlama)
 - **`PatternCommandResolver`**: Reliable fallback using regex patterns for Git/Azure CLI
 - **`CommandValidator`**: Safety checking for dangerous operations
 - **`LearningService`**: Continuous improvement from user feedback
 - **`OllamaAIProvider`**: Local AI integration with no data leaving your machine
+
+**📊 [View Detailed Architecture](ARCHITECTURE.md)** - Complete diagrams, component interactions, and design patterns
 
 ## 📦 Installation Options
 
