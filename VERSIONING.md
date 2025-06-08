@@ -46,8 +46,7 @@ Use the automated version bumping scripts for consistent versioning:
 
 ### 2. Development Build and Testing
 
-Test your changes locally before releasing:
-
+#### Option A: Automated Build (Recommended)
 ```bash
 # Build and install locally for testing
 ./scripts/build-dev.sh
@@ -60,6 +59,33 @@ cmdai ask git "check status"
 **Windows:**
 ```powershell
 .\scripts\build-dev.ps1
+```
+
+#### Option B: Manual Build
+```bash
+# From repository root
+cd cmdai/src/CmdAi.Cli
+
+# Clean and build
+dotnet clean
+dotnet build --configuration Release
+
+# Create package
+dotnet pack --configuration Release --output ./nupkg
+
+# Install globally
+dotnet tool uninstall --global CmdAi.Cli  # Remove existing
+dotnet tool install --global --add-source ./nupkg CmdAi.Cli
+```
+
+**Windows (from repository root):**
+```powershell
+cd cmdai\src\CmdAi.Cli
+dotnet clean
+dotnet build --configuration Release
+dotnet pack --configuration Release --output .\nupkg
+dotnet tool uninstall --global CmdAi.Cli
+dotnet tool install --global --add-source .\nupkg CmdAi.Cli
 ```
 
 ### 3. Release Process

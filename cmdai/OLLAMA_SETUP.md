@@ -19,7 +19,13 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ```
 
 **Windows:**
-- Download the installer from [ollama.ai](https://ollama.ai)
+```cmd
+# Download and install Ollama for Windows
+# From https://ollama.ai/download
+# Then:
+ollama pull codellama:7b
+```
+- Download the installer from [ollama.ai/download](https://ollama.ai/download)
 - Or use WSL2 with the Linux installation method
 
 ### 2. Download CodeLlama Model
