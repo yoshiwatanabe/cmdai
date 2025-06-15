@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using CmdAi.Core.Interfaces;
 using CmdAi.Core.Models;
 using CmdAi.Core.Services;
+using DotNetEnv;
 
 namespace CmdAi.Cli;
 
@@ -140,6 +141,13 @@ class Program
     {
         var services = new ServiceCollection();
         
+        // Load .env file if it exists
+        var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        if (File.Exists(envPath))
+        {
+            Env.Load(envPath);
+        }
+        
         // Configuration
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -158,10 +166,12 @@ class Program
         services.AddSingleton<ICommandValidator, CommandValidator>();
         services.AddSingleton<ILearningService, FileLearningService>();
 
-        // HTTP client for AI provider
+        // HTTP clients for AI providers
         services.AddHttpClient<OllamaAIProvider>();
+        services.AddHttpClient<AzureOpenAIProvider>();
         
-        // AI services
+        // AI providers
+        services.AddSingleton<IAIProvider, AzureOpenAIProvider>();
         services.AddSingleton<IAIProvider, OllamaAIProvider>();
         
         // Pattern-based resolvers
@@ -169,8 +179,8 @@ class Program
         services.AddSingleton<AzureCommandResolver>();
         services.AddSingleton<PatternCommandResolver>();
         
-        // Main AI-powered resolver
-        services.AddSingleton<ICommandResolver, AICommandResolver>();
+        // Main AI-powered resolver with multi-provider support
+        services.AddSingleton<ICommandResolver, MultiProviderAICommandResolver>();
 
         return services;
     }
