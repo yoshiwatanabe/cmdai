@@ -28,6 +28,15 @@ class Program
         
         rootCommand.AddCommand(versionCommand);
 
+        // Add diagnostics command
+        var diagnosticsCommand = new Command("diagnostics", "Show configuration and provider status");
+        diagnosticsCommand.SetHandler(async () =>
+        {
+            await ShowDiagnosticsAsync(serviceProvider);
+        });
+        
+        rootCommand.AddCommand(diagnosticsCommand);
+
         var toolArg = new Argument<string>("tool", "The tool to get help with (e.g., git, az)");
         var queryArg = new Argument<string>("query", "Natural language description of what you want to do");
         
@@ -74,6 +83,138 @@ class Program
         Console.WriteLine();
         Console.WriteLine("Repository: https://github.com/yoshiwatanabe/cmdai");
         Console.WriteLine("License: MIT");
+    }
+
+    static async Task ShowDiagnosticsAsync(ServiceProvider serviceProvider)
+    {
+        var aiConfig = serviceProvider.GetRequiredService<AIConfiguration>();
+        var aiProviders = serviceProvider.GetServices<IAIProvider>();
+
+        Console.WriteLine("=== CmdAI Diagnostics ===");
+        Console.WriteLine();
+
+        // Show configuration
+        Console.WriteLine("📋 Configuration:");
+        Console.WriteLine($"  AI Enabled: {aiConfig.EnableAI}");
+        Console.WriteLine($"  Configured Providers: [{string.Join(", ", aiConfig.GetProviders())}]");
+        Console.WriteLine($"  Fallback to Patterns: {aiConfig.FallbackToPatterns}");
+        Console.WriteLine($"  Timeout: {aiConfig.TimeoutSeconds}s");
+        Console.WriteLine();
+
+        // Show environment file detection
+        Console.WriteLine("🔍 Environment File Detection:");
+        var homeEnvPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".env");
+        var currentEnvPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        
+        Console.WriteLine($"  Home .env: {homeEnvPath}");
+        Console.WriteLine($"    Exists: {File.Exists(homeEnvPath)}");
+        if (File.Exists(homeEnvPath))
+        {
+            var lines = File.ReadAllLines(homeEnvPath).Where(l => !l.StartsWith("#") && !string.IsNullOrWhiteSpace(l));
+            Console.WriteLine($"    Configuration lines: {lines.Count()}");
+            foreach (var line in lines.Take(5))
+            {
+                var key = line.Split('=')[0];
+                Console.WriteLine($"      {key}=***");
+            }
+        }
+        
+        Console.WriteLine($"  Current .env: {currentEnvPath}");
+        Console.WriteLine($"    Exists: {File.Exists(currentEnvPath)}");
+        Console.WriteLine();
+
+        // Show Azure OpenAI configuration
+        Console.WriteLine("🌐 Azure OpenAI Configuration:");
+        Console.WriteLine($"  Endpoint: {(string.IsNullOrEmpty(aiConfig.AzureOpenAIEndpoint) ? "Not configured" : "Configured")}");
+        Console.WriteLine($"  API Key: {(string.IsNullOrEmpty(aiConfig.AzureOpenAIApiKey) ? "Not configured" : "Configured (***)")}");
+        Console.WriteLine($"  Model: {aiConfig.AzureOpenAIModelName ?? "model-router"}");
+        Console.WriteLine();
+
+        // Show Ollama configuration
+        Console.WriteLine("🖥️  Ollama Configuration:");
+        Console.WriteLine($"  Endpoint: {aiConfig.OllamaEndpoint}");
+        Console.WriteLine($"  Model: {aiConfig.ModelName}");
+        Console.WriteLine();
+
+        // Test provider connectivity
+        Console.WriteLine("🔌 Provider Connectivity Tests:");
+        foreach (var provider in aiProviders)
+        {
+            Console.Write($"  {provider.GetType().Name}: ");
+            try
+            {
+                var isAvailable = await provider.IsAvailableAsync();
+                Console.WriteLine(isAvailable ? "✅ Available" : "❌ Unavailable");
+                
+                if (isAvailable)
+                {
+                    Console.WriteLine($"    Model: {provider.ModelName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error: {ex.Message}");
+            }
+        }
+        Console.WriteLine();
+
+        // Show provider priority order
+        Console.WriteLine("🎯 Provider Priority Order:");
+        var orderedProviders = GetOrderedProvidersForDiagnostics(aiProviders, aiConfig);
+        for (int i = 0; i < orderedProviders.Count(); i++)
+        {
+            var provider = orderedProviders.ElementAt(i);
+            Console.WriteLine($"  {i + 1}. {provider.GetType().Name}");
+        }
+        Console.WriteLine();
+
+        // Test a simple command to see which provider is actually used
+        Console.WriteLine("🧪 Provider Selection Test:");
+        Console.WriteLine("  Testing which provider would be selected for a git command...");
+        try
+        {
+            var contextProvider = serviceProvider.GetRequiredService<IContextProvider>();
+            var commandResolver = serviceProvider.GetRequiredService<ICommandResolver>();
+            var context = await contextProvider.GetContextAsync();
+            var request = new CommandRequest("git", "show status", IsDirectCommand: true);
+            var result = await commandResolver.ResolveCommandAsync(request, context);
+            
+            if (result != null)
+            {
+                Console.WriteLine($"  Selected provider: {result.Context}");
+                Console.WriteLine($"  Generated command: {result.Command}");
+            }
+            else
+            {
+                Console.WriteLine("  No provider could resolve the command");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Error during test: {ex.Message}");
+        }
+    }
+
+    static IEnumerable<IAIProvider> GetOrderedProvidersForDiagnostics(IEnumerable<IAIProvider> aiProviders, AIConfiguration config)
+    {
+        var configuredProviders = config.GetProviders();
+        var orderedProviders = new List<IAIProvider>();
+
+        foreach (var providerName in configuredProviders)
+        {
+            var provider = aiProviders.FirstOrDefault(p => 
+                p.GetType().Name.ToLowerInvariant().Contains(providerName.ToLowerInvariant()));
+            
+            if (provider != null)
+            {
+                orderedProviders.Add(provider);
+            }
+        }
+
+        var remainingProviders = aiProviders.Where(p => !orderedProviders.Contains(p));
+        orderedProviders.AddRange(remainingProviders);
+
+        return orderedProviders;
     }
 
     static async Task HandleCommandAsync(ServiceProvider serviceProvider, CommandRequest request)
