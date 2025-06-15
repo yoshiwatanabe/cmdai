@@ -52,5 +52,14 @@
     "WasAccepted": false,
     "WasSuccessful": false,
     "ConfidenceScore": 0.3
+  },
+  {
+    "Tool": "git",
+    "Query": "delete untracked files",
+    "Command": "git clean -fd",
+    "Timestamp": "2025-06-15T19:49:22.4529214Z",
+    "WasAccepted": false,
+    "WasSuccessful": false,
+    "ConfidenceScore": 0.3
   }
 ]
