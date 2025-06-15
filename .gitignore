@@ -77,3 +77,4 @@ packages-microsoft-prod.deb
 
 # Runtime specific
 .dotnet/
+.fake
