@@ -141,11 +141,17 @@ class Program
     {
         var services = new ServiceCollection();
         
-        // Load .env file if it exists
-        var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-        if (File.Exists(envPath))
+        // Load .env file if it exists (check home directory first, then current directory)
+        var homeEnvPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".env");
+        var currentEnvPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        
+        if (File.Exists(homeEnvPath))
         {
-            Env.Load(envPath);
+            Env.Load(homeEnvPath);
+        }
+        else if (File.Exists(currentEnvPath))
+        {
+            Env.Load(currentEnvPath);
         }
         
         // Configuration

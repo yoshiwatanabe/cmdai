@@ -53,21 +53,23 @@ dotnet --version  # Should show 8.0.x
 ### Option A: Azure OpenAI (Recommended - Most Powerful)
 
 1. **Download configuration template**:
-   ```bash
-   # Clone repo to get the .env.example file
-   git clone https://github.com/yoshiwatanabe/cmdai.git
-   cd cmdai/cmdai
-   cp .env.example .env
-   ```
+   - Go to [.env.example](https://raw.githubusercontent.com/yoshiwatanabe/cmdai/main/.env.example)
+   - Right-click → "Save As" → Save as `.env` (remove the `.example` part)
+   - **Save location**: Your home directory (e.g., `C:\Users\YourName\.env` or `~/.env`)
 
-2. **Add your Azure OpenAI credentials** to `.env`:
+2. **Edit the `.env` file** with your Azure OpenAI credentials:
    ```bash
-   # Edit .env file with your details:
-   AI__AzureOpenAIApiKey=your_api_key_here
+   # Open .env in any text editor and replace these lines:
+   AI__AzureOpenAIApiKey=your_actual_api_key_here
    AI__AzureOpenAIEndpoint=https://your-endpoint.openai.azure.com/openai/deployments/your-model/chat/completions?api-version=2025-01-01-preview
    AI__Providers__0=azureopenai
    AI__Providers__1=ollama
    ```
+
+3. **That's it!** 
+   - CmdAI will automatically find your `.env` file in your home directory
+   - Works from any folder on your system - no need to copy the file around
+   - One secure location for your API key
 
 ### Option B: Add Ollama Fallback (Optional but Recommended)
 

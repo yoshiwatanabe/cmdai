@@ -59,12 +59,10 @@ dotnet --version  # Should show 8.0.x
 
 ## Step 3: Configure Azure OpenAI (Primary AI)
 
-1. **Get configuration template**:
-   ```bash
-   git clone https://github.com/yoshiwatanabe/cmdai.git
-   cd cmdai/cmdai
-   cp .env.example .env
-   ```
+1. **Download configuration template**:
+   - Go to [.env.example](https://raw.githubusercontent.com/yoshiwatanabe/cmdai/main/.env.example)  
+   - Right-click → "Save As" → Save as `.env` in your home directory
+   - Location: `C:\Users\YourName\.env` (Windows) or `~/.env` (Mac/Linux)
 
 2. **Edit `.env` file** with your Azure OpenAI details:
    ```bash
