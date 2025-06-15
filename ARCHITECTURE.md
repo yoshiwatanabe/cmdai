@@ -13,7 +13,8 @@ graph TB
     Parser --> Context[🔍 Context Provider]
     Context --> Resolver{🤖 Command Resolver}
     
-    Resolver --> AI[🧠 AI Resolver]
+    Resolver --> AI[🤖 Multi-Provider AI Resolver]
+    AI --> Azure[🌐 Azure OpenAI]
     AI --> Ollama[🦙 Ollama/CodeLlama]
     AI --> Validator[🛡️ Command Validator]
     
@@ -41,26 +42,31 @@ graph TB
 
 ## 🔄 Component Interaction Flow
 
-### Primary AI Resolution Path
+### Multi-Provider AI Resolution Path
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant CLI as CLI Interface
-    participant AIR as AI Resolver
-    participant OAI as Ollama AI
+    participant MPR as Multi-Provider Resolver
+    participant AZ as Azure OpenAI
+    participant OL as Ollama AI
     participant CV as Command Validator
     participant CE as Command Executor
     participant LS as Learning Service
     
-    U->>CLI: cmdai ask docker "show containers"
-    CLI->>AIR: Process Request
-    AIR->>OAI: Generate Command
-    OAI-->>AIR: "docker ps"
-    AIR->>CV: Validate Command
-    CV-->>AIR: ✅ Safe
-    AIR->>CE: Execute with Confirmation
-    CE->>U: Show: "docker ps" - Execute? (y/N)
+    U->>CLI: cmdai git "delete untracked files"
+    CLI->>MPR: Process Request
+    MPR->>AZ: Try Azure OpenAI (Priority 1)
+    AZ-->>MPR: "git clean -fd"
+    alt If Azure OpenAI fails
+        MPR->>OL: Try Ollama (Priority 2)
+        OL-->>MPR: "git clean -fd"
+    end
+    MPR->>CV: Validate Command
+    CV-->>MPR: ⚠️ Potentially unsafe
+    MPR->>CE: Execute with Warning
+    CE->>U: Show: "git clean -fd" ⚠️ RISKY - Execute? (y/N)
     U->>CE: y
     CE->>CE: Run Command
     CE->>LS: Record Success
@@ -172,10 +178,11 @@ classDiagram
         +ResolveCommandAsync(request, context) CommandResult
     }
     
-    class AICommandResolver {
+    class MultiProviderAICommandResolver {
         +CanResolve(tool: string) bool
         +ResolveCommandAsync(request, context) CommandResult
-        -TryAIResolution() CommandResult
+        -TryAIResolutionWithPriority() CommandResult
+        -GetOrderedProviders() IAIProvider[]
         -BuildAIContext() string
     }
     
@@ -191,13 +198,13 @@ classDiagram
         -GitSpecificPatterns() CommandResult
     }
     
-    ICommandResolver <|-- AICommandResolver
+    ICommandResolver <|-- MultiProviderAICommandResolver
     ICommandResolver <|-- PatternCommandResolver
     ICommandResolver <|-- GitCommandResolver
     
-    AICommandResolver --> IAIProvider
-    AICommandResolver --> ICommandValidator
-    AICommandResolver --> ILearningService
+    MultiProviderAICommandResolver --> IAIProvider
+    MultiProviderAICommandResolver --> ICommandValidator
+    MultiProviderAICommandResolver --> ILearningService
 ```
 
 ### 2. Dependency Injection Architecture
@@ -246,9 +253,10 @@ journey
       Learn About AI Features: 5: User
       
     section AI Setup
-      Install Ollama: 3: User
+      Configure Azure OpenAI: 5: User
+      Install Ollama (Optional): 3: User
       Download CodeLlama: 4: User
-      Configure CmdAI: 5: User
+      Test with Diagnostics: 5: User
       
     section Daily Usage
       Natural Language Query: 5: User
@@ -279,6 +287,7 @@ graph LR
     Config --> Learning[Learning Service Setup]
     Config --> Safety[Safety Validation Setup]
     
+    AIProvider --> Azure[Azure OpenAI Configuration]
     AIProvider --> Ollama[Ollama Configuration]
     AIProvider --> Future[Future AI Providers]
     
