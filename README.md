@@ -2,6 +2,8 @@
 
 Transform natural language into CLI commands using AI. Supports Azure OpenAI (remote) with Ollama (local) fallback.
 
+![CmdAI Demo](cmdai-use.gif)
+
 ## 📦 Step 1: Install Prerequisites
 
 ### Install .NET 8.0
