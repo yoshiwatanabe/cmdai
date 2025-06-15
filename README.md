@@ -31,7 +31,7 @@ dotnet --version  # Should show 8.0.x
 
 ## 🚀 Step 2: Install CmdAI
 
-1. **Download**: Go to [Releases](https://github.com/yoshiwatanabe/cmdai/releases) and download `CmdAi.Cli.1.1.0.nupkg`
+1. **Download**: Go to [Releases](https://github.com/yoshiwatanabe/cmdai/releases/latest) and download the latest `CmdAi.Cli.*.nupkg` file
 
 2. **Install globally**:
    ```bash
@@ -45,7 +45,7 @@ dotnet --version  # Should show 8.0.x
 3. **Verify installation**:
    ```bash
    cmdai version
-   # Should show: CmdAI - AI-Powered CLI Assistant v1.1.0
+   # Should show: CmdAI - AI-Powered CLI Assistant v1.x.x
    ```
 
 ## ⚙️ Step 3: Configure AI Providers
