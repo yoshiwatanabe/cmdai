@@ -17,6 +17,8 @@ class Program
         var serviceProvider = services.BuildServiceProvider();
 
         var rootCommand = new RootCommand("AI-powered CLI assistant that translates natural language to CLI commands");
+        var rootQueryArg = new Argument<string?>("query", () => null, "Natural language request (universal mode)");
+        rootCommand.AddArgument(rootQueryArg);
 
         // Add custom version command (since --version is automatically handled)
         var versionCommand = new Command("version", "Show version information");
@@ -67,6 +69,18 @@ class Program
         }
 
         rootCommand.AddCommand(askCommand);
+        rootCommand.AddCommand(BuildMemoryCommand(serviceProvider));
+        rootCommand.SetHandler<string?>(async (query) =>
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                Console.WriteLine("Provide a natural language request or use --help.");
+                return;
+            }
+
+            var request = new CommandRequest("auto", query, IsDirectCommand: false);
+            await HandleCommandAsync(serviceProvider, request);
+        }, rootQueryArg);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -88,6 +102,7 @@ class Program
     static async Task ShowDiagnosticsAsync(ServiceProvider serviceProvider)
     {
         var aiConfig = serviceProvider.GetRequiredService<AIConfiguration>();
+        var memoryConfig = serviceProvider.GetRequiredService<MemoryConfiguration>();
         var aiProviders = serviceProvider.GetServices<IAIProvider>();
 
         Console.WriteLine("=== CmdAI Diagnostics ===");
@@ -103,6 +118,13 @@ class Program
         {
             Console.WriteLine($"  Warning: {warning}");
         }
+        Console.WriteLine();
+
+        Console.WriteLine("🧠 Memory Configuration:");
+        Console.WriteLine($"  StorePath: {memoryConfig.StorePath ?? "(default: ~/.cmdai/memory)"}");
+        Console.WriteLine($"  CandidateCap: {memoryConfig.CandidateCap}");
+        Console.WriteLine($"  HighConfidenceThreshold: {memoryConfig.HighConfidenceThreshold:0.00}");
+        Console.WriteLine($"  Redaction Enabled: {memoryConfig.EnableRedaction}");
         Console.WriteLine();
 
         // Show environment file detection
@@ -253,10 +275,41 @@ class Program
         var commandResolver = serviceProvider.GetRequiredService<ICommandResolver>();
         var commandExecutor = serviceProvider.GetRequiredService<ICommandExecutor>();
         var learningService = serviceProvider.GetRequiredService<ILearningService>();
+        var memoryService = serviceProvider.GetRequiredService<IMemoryService>();
+        var toolAvailability = serviceProvider.GetRequiredService<IToolAvailabilityService>();
+        var fallbackService = serviceProvider.GetRequiredService<ICommandFallbackService>();
 
         try
         {
             var context = await contextProvider.GetContextAsync();
+            var recalled = await memoryService.FindBestMatchAsync(request);
+            if (recalled?.IsHighConfidence == true)
+            {
+                var memoryTool = InferToolFromCommand(recalled.Entry.Command);
+                Console.WriteLine($"Memory match ({recalled.Score:0.00}): {recalled.Reason}");
+                Console.WriteLine($"Suggested command: {recalled.Entry.Command}");
+                Console.WriteLine($"Inferred tool: {memoryTool}");
+                Console.WriteLine("Reason: learned from previous successful interaction");
+                var memoryResult = new CommandResult(
+                    recalled.Entry.Command,
+                    "Memory-recalled command",
+                    true,
+                    $"Memory recall ({recalled.Score:0.00})",
+                    memoryTool,
+                    "Previous accepted/successful interaction");
+
+                var useMemory = await commandExecutor.ConfirmExecutionAsync(memoryResult);
+                if (useMemory)
+                {
+                    var succeeded = await commandExecutor.ExecuteAsync(memoryResult, context);
+                    await memoryService.RecordAsync(request, memoryResult, true, succeeded);
+                    await learningService.RecordFeedbackAsync(request, memoryResult, true, succeeded);
+                    return;
+                }
+
+                Console.WriteLine("Memory suggestion rejected. Continuing with AI inference...");
+            }
+
             var result = await commandResolver.ResolveCommandAsync(request, context);
 
             if (result == null)
@@ -265,8 +318,22 @@ class Program
                 return;
             }
 
+            var inferredTool = result.InferredTool ?? InferToolFromCommand(result.Command);
             Console.WriteLine($"Suggested command: {result.Command}");
             Console.WriteLine($"Description: {result.Description}");
+            Console.WriteLine($"Inferred tool: {inferredTool}");
+            Console.WriteLine($"Reason: {result.Reason ?? "AI inference based on your request and context"}");
+
+            var firstToken = GetFirstToken(result.Command);
+            if (!string.IsNullOrWhiteSpace(firstToken) && !toolAvailability.IsAvailable(firstToken))
+            {
+                var fallbackCommand = fallbackService.GetFallbackCommand(result.Command);
+                if (!string.IsNullOrWhiteSpace(fallbackCommand))
+                {
+                    Console.WriteLine($"Fallback command: {fallbackCommand}");
+                    Console.WriteLine($"Note: '{firstToken}' is not available on this machine.");
+                }
+            }
 
             if (result.Context != null)
             {
@@ -301,11 +368,68 @@ class Program
             {
                 await learningService.RecordFeedbackAsync(request, result, wasAccepted, wasSuccessful);
             }
+
+            await memoryService.RecordAsync(request, result, wasAccepted, wasSuccessful);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error: {ex.Message}");
         }
+    }
+
+    static Command BuildMemoryCommand(ServiceProvider serviceProvider)
+    {
+        var memoryCommand = new Command("memory", "Inspect and manage learned command memory");
+        var listCommand = new Command("list", "List recent memory entries");
+        var limitOption = new Option<int>("--limit", () => 20, "Maximum entries to show");
+        listCommand.AddOption(limitOption);
+        listCommand.SetHandler<int>(async (limit) =>
+        {
+            var memoryService = serviceProvider.GetRequiredService<IMemoryService>();
+            var entries = await memoryService.ListAsync(limit);
+            if (entries.Count == 0)
+            {
+                Console.WriteLine("Memory is empty.");
+                return;
+            }
+
+            foreach (var entry in entries)
+            {
+                Console.WriteLine($"[{entry.TimestampUtc:O}] tool={entry.Tool} query=\"{entry.Query}\"");
+                Console.WriteLine($"  command: {entry.Command}");
+                Console.WriteLine($"  score: {entry.ConfidenceScore:0.00} accepted={entry.WasAccepted} successful={entry.WasSuccessful}");
+            }
+        }, limitOption);
+
+        var clearCommand = new Command("clear", "Clear all memory entries");
+        clearCommand.SetHandler(async () =>
+        {
+            var memoryService = serviceProvider.GetRequiredService<IMemoryService>();
+            Console.Write("Clear all memory entries? (y/N): ");
+            var input = Console.ReadLine()?.Trim().ToLowerInvariant();
+            if (input != "y" && input != "yes")
+            {
+                Console.WriteLine("Cancelled.");
+                return;
+            }
+
+            await memoryService.ClearAsync();
+            Console.WriteLine("Memory cleared.");
+        });
+
+        memoryCommand.AddCommand(listCommand);
+        memoryCommand.AddCommand(clearCommand);
+        return memoryCommand;
+    }
+
+    static string InferToolFromCommand(string command)
+    {
+        return GetFirstToken(command)?.ToLowerInvariant() ?? "unknown";
+    }
+
+    static string? GetFirstToken(string command)
+    {
+        return command.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
     }
 
     static ServiceCollection ConfigureServices()
@@ -336,6 +460,9 @@ class Program
         configuration.GetSection("AI").Bind(aiConfig);
         aiConfig.ApplyLegacyCompatibility();
         services.AddSingleton(aiConfig);
+        var memoryConfig = new MemoryConfiguration();
+        configuration.GetSection("Memory").Bind(memoryConfig);
+        services.AddSingleton(memoryConfig);
 
         // Core services
         services.AddSingleton<IContextProvider, ContextProvider>();
@@ -343,6 +470,9 @@ class Program
         services.AddSingleton<ICommandRepository, InMemoryCommandRepository>();
         services.AddSingleton<ICommandValidator, CommandValidator>();
         services.AddSingleton<ILearningService, FileLearningService>();
+        services.AddSingleton<IMemoryService, FileMemoryService>();
+        services.AddSingleton<IToolAvailabilityService, ToolAvailabilityService>();
+        services.AddSingleton<ICommandFallbackService, CommandFallbackService>();
 
         // HTTP clients for AI providers
         services.AddHttpClient<OpenAIProvider>();

@@ -65,10 +65,18 @@ AI__Providers__3=gemini
 ## Usage
 
 ```bash
+cmdai "I'm on WSL and need to find CONFIG_ROOT in .ts files recursively"
 cmdai git "delete untracked files"
 cmdai az "list subscriptions"
 cmdai docker "show running containers"
 cmdai kubectl "get pods"
+```
+
+Memory controls:
+
+```bash
+cmdai memory list --limit 20
+cmdai memory clear
 ```
 
 ## Diagnostics

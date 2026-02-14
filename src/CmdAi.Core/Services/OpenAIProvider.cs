@@ -46,9 +46,7 @@ public class OpenAIProvider : IAIProvider
             {
                 new { role = "user", content = prompt }
             },
-            max_tokens = 256,
-            temperature = 0.1,
-            top_p = 0.9
+            max_completion_tokens = 256
         };
 
         AIProviderException? lastError = null;

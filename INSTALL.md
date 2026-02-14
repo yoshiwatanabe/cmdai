@@ -76,6 +76,7 @@ Create `C:\Users\<you>\.env` based on `.env.example`, set at least OpenAI:
 
 ```text
 AI__OpenAI__ApiKeys__0=your_openai_api_key
+Memory__StorePath=C:\Users\<you>\OneDrive\cmdai-memory
 ```
 
 Verify:
@@ -135,6 +136,7 @@ AI__Providers__1=azureopenai
 AI__Providers__2=anthropic
 AI__Providers__3=gemini
 AI__OpenAI__ApiKeys__0=your_openai_api_key
+Memory__StorePath=/mnt/c/Users/<you>/OneDrive/cmdai-memory
 EOF
 ```
 
@@ -170,4 +172,3 @@ dotnet tool uninstall --global CmdAi.Cli
 - If `cmdai` is found on Windows but not in WSL: install it inside WSL and ensure `$HOME/.dotnet/tools` is on `PATH`.
 - If `cmdai` works but doesn’t use your keys: check where `.env` is being loaded from in `cmdai diagnostics`.
 - If provider failover doesn’t happen: failover only continues on transient failures (`timeout`, `network`, `429`, `5xx`).
-

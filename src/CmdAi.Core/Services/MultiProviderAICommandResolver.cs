@@ -152,7 +152,8 @@ public class MultiProviderAICommandResolver : ICommandResolver, IResolutionDiagn
             resultContext += $" | Warnings: {string.Join(", ", validation.Warnings)}";
         }
 
-        return new CommandResult(command, description, true, resultContext);
+        var inferredTool = command.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.ToLowerInvariant();
+        return new CommandResult(command, description, true, resultContext, inferredTool, "AI inference");
     }
 
     private IEnumerable<IAIProvider> GetOrderedProviders()
