@@ -19,10 +19,12 @@ public class CommandExecutor : ICommandExecutor
     {
         try
         {
+            var (shell, shellArgsPrefix) = GetShellInvocation();
+
             var processInfo = new ProcessStartInfo
             {
-                FileName = "/bin/bash",
-                Arguments = $"-c \"{command.Command}\"",
+                FileName = shell,
+                Arguments = $"{shellArgsPrefix} {command.Command}",
                 WorkingDirectory = context.WorkingDirectory,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -76,5 +78,45 @@ public class CommandExecutor : ICommandExecutor
             Console.WriteLine($"Error executing command: {ex.Message}");
             return false;
         }
+    }
+
+    private static (string Shell, string ArgsPrefix) GetShellInvocation()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Prefer PowerShell 7 if available, else Windows PowerShell.
+            var pwshPath = ResolveOnPath("pwsh.exe");
+            if (!string.IsNullOrWhiteSpace(pwshPath))
+            {
+                return (pwshPath, "-NoProfile -Command");
+            }
+
+            var powershellPath = ResolveOnPath("powershell.exe") ?? "powershell.exe";
+            return (powershellPath, "-NoProfile -Command");
+        }
+
+        return ("/bin/bash", "-c");
+    }
+
+    private static string? ResolveOnPath(string exeName)
+    {
+        try
+        {
+            var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var candidate = Path.Combine(dir.Trim(), exeName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort.
+        }
+
+        return null;
     }
 }

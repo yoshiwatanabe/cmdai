@@ -50,7 +50,7 @@ class Program
             await HandleCommandAsync(serviceProvider, request);
         }, toolArg, queryArg);
 
-        var directToolCommands = new[] { "git", "az", "azure", "docker", "kubectl", "npm", "yarn" };
+        var directToolCommands = new[] { "git", "az", "azure", "docker", "kubectl", "npm", "yarn", "ps", "pwsh", "powershell" };
         foreach (var toolName in directToolCommands)
         {
             var directQueryArg = new Argument<string>("query", $"Natural language description of the {toolName} operation");

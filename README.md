@@ -17,6 +17,26 @@ Default provider chain:
 dotnet tool install --global --add-source . CmdAi.Cli
 ```
 
+For a complete setup from `git clone` through installing on both Windows and WSL, see `INSTALL.md`.
+
+## WSL (Recommended)
+
+If you want `cmdai` to execute commands inside WSL, install it inside WSL (Linux), not as a Windows `.exe`.
+
+From Windows (build the tool package):
+
+```powershell
+dotnet pack .\src\CmdAi.Cli\CmdAi.Cli.csproj -c Release
+```
+
+Then from WSL (install from the Windows-mounted nupkg folder):
+
+```bash
+dotnet tool install --global --add-source /mnt/c/Users/tsuyo/Repos/cmdai/src/CmdAi.Cli/nupkg CmdAi.Cli
+export PATH="$PATH:$HOME/.dotnet/tools"
+cmdai version
+```
+
 ## Configure
 
 Create `~/.env` from `.env.example` and set at least your OpenAI key:

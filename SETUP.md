@@ -8,6 +8,24 @@ This setup configures CmdAI with OpenAI as the default provider and API failover
 dotnet tool install --global --add-source . CmdAi.Cli
 ```
 
+## WSL Notes
+
+If you want CmdAI to run inside WSL and execute commands in WSL, install it inside WSL (Linux) rather than using the Windows `cmdai.exe`.
+
+1) Build the package on Windows:
+
+```powershell
+dotnet pack .\src\CmdAi.Cli\CmdAi.Cli.csproj -c Release
+```
+
+2) Install inside WSL:
+
+```bash
+dotnet tool install --global --add-source /mnt/c/Users/tsuyo/Repos/cmdai/src/CmdAi.Cli/nupkg CmdAi.Cli
+export PATH="$PATH:$HOME/.dotnet/tools"
+cmdai diagnostics
+```
+
 ## 2) Create config
 
 Copy `.env.example` to `~/.env` and set your keys.

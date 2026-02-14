@@ -43,6 +43,15 @@ internal static class AIProviderPromptHelper
                 sb.AppendLine("'list pods' -> kubectl get pods");
                 sb.AppendLine("'describe pod' -> kubectl describe pod");
                 break;
+            case "ps":
+            case "pwsh":
+            case "powershell":
+                sb.AppendLine("Tool: PowerShell");
+                sb.AppendLine("Examples:");
+                sb.AppendLine("'show source path for a command' -> Get-Command git | Select-Object -ExpandProperty Source");
+                sb.AppendLine("'list running processes' -> Get-Process");
+                sb.AppendLine("'search PATH for an exe' -> Get-Command dotnet | Format-List Source");
+                break;
         }
 
         if (!string.IsNullOrWhiteSpace(context))
