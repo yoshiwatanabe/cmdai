@@ -79,7 +79,7 @@ class Program
         var title = assembly.GetCustomAttribute<AssemblyTitleAttribute>()?.Title ?? "CmdAI";
         
         Console.WriteLine($"{title} v{informationalVersion}");
-        Console.WriteLine("AI-powered CLI assistant with local Ollama integration");
+        Console.WriteLine("AI-powered CLI assistant with multi-provider API failover");
         Console.WriteLine();
         Console.WriteLine("Repository: https://github.com/yoshiwatanabe/cmdai");
         Console.WriteLine("License: MIT");
@@ -99,6 +99,10 @@ class Program
         Console.WriteLine($"  Configured Providers: [{string.Join(", ", aiConfig.GetProviders())}]");
         Console.WriteLine($"  Fallback to Patterns: {aiConfig.FallbackToPatterns}");
         Console.WriteLine($"  Timeout: {aiConfig.TimeoutSeconds}s");
+        foreach (var warning in aiConfig.GetConfigurationWarnings())
+        {
+            Console.WriteLine($"  Warning: {warning}");
+        }
         Console.WriteLine();
 
         // Show environment file detection
@@ -123,24 +127,18 @@ class Program
         Console.WriteLine($"    Exists: {File.Exists(currentEnvPath)}");
         Console.WriteLine();
 
-        // Show Azure OpenAI configuration
-        Console.WriteLine("🌐 Azure OpenAI Configuration:");
-        Console.WriteLine($"  Endpoint: {(string.IsNullOrEmpty(aiConfig.AzureOpenAIEndpoint) ? "Not configured" : "Configured")}");
-        Console.WriteLine($"  API Key: {(string.IsNullOrEmpty(aiConfig.AzureOpenAIApiKey) ? "Not configured" : "Configured (***)")}");
-        Console.WriteLine($"  Model: {aiConfig.AzureOpenAIModelName ?? "model-router"}");
-        Console.WriteLine();
-
-        // Show Ollama configuration
-        Console.WriteLine("🖥️  Ollama Configuration:");
-        Console.WriteLine($"  Endpoint: {aiConfig.OllamaEndpoint}");
-        Console.WriteLine($"  Model: {aiConfig.ModelName}");
+        Console.WriteLine("🌐 Provider Configuration:");
+        ShowProviderConfiguration("openai", aiConfig.OpenAI);
+        ShowProviderConfiguration("azureopenai", aiConfig.AzureOpenAI);
+        ShowProviderConfiguration("anthropic", aiConfig.Anthropic);
+        ShowProviderConfiguration("gemini", aiConfig.Gemini);
         Console.WriteLine();
 
         // Test provider connectivity
         Console.WriteLine("🔌 Provider Connectivity Tests:");
         foreach (var provider in aiProviders)
         {
-            Console.Write($"  {provider.GetType().Name}: ");
+            Console.Write($"  {provider.ProviderId}: ");
             try
             {
                 var isAvailable = await provider.IsAvailableAsync();
@@ -160,11 +158,11 @@ class Program
 
         // Show provider priority order
         Console.WriteLine("🎯 Provider Priority Order:");
-        var orderedProviders = GetOrderedProvidersForDiagnostics(aiProviders, aiConfig);
+        var orderedProviders = GetOrderedProvidersForDiagnostics(aiProviders, aiConfig).ToList();
         for (int i = 0; i < orderedProviders.Count(); i++)
         {
             var provider = orderedProviders.ElementAt(i);
-            Console.WriteLine($"  {i + 1}. {provider.GetType().Name}");
+            Console.WriteLine($"  {i + 1}. {provider.ProviderId} ({provider.ModelName})");
         }
         Console.WriteLine();
 
@@ -193,6 +191,30 @@ class Program
         {
             Console.WriteLine($"  Error during test: {ex.Message}");
         }
+
+        if (serviceProvider.GetService<IResolutionDiagnostics>() is { } diagnostics)
+        {
+            Console.WriteLine();
+            Console.WriteLine("📈 Last Failover Trace:");
+            var trace = diagnostics.GetLastResolutionTrace();
+            if (trace.Count == 0)
+            {
+                Console.WriteLine("  No provider attempts were recorded yet.");
+            }
+            else
+            {
+                foreach (var attempt in trace)
+                {
+                    var status = attempt.Succeeded ? "✅ Success" : "❌ Failed";
+                    var failureType = attempt.FailureType.HasValue ? $" [{attempt.FailureType.Value}]" : string.Empty;
+                    Console.WriteLine($"  {attempt.ProviderId}: {status}{failureType}");
+                    if (!string.IsNullOrWhiteSpace(attempt.Message))
+                    {
+                        Console.WriteLine($"    {attempt.Message}");
+                    }
+                }
+            }
+        }
     }
 
     static IEnumerable<IAIProvider> GetOrderedProvidersForDiagnostics(IEnumerable<IAIProvider> aiProviders, AIConfiguration config)
@@ -202,9 +224,8 @@ class Program
 
         foreach (var providerName in configuredProviders)
         {
-            var provider = aiProviders.FirstOrDefault(p => 
-                p.GetType().Name.ToLowerInvariant().Contains(providerName.ToLowerInvariant()));
-            
+            var provider = aiProviders.FirstOrDefault(p =>
+                p.ProviderId.Equals(providerName, StringComparison.OrdinalIgnoreCase));
             if (provider != null)
             {
                 orderedProviders.Add(provider);
@@ -215,6 +236,15 @@ class Program
         orderedProviders.AddRange(remainingProviders);
 
         return orderedProviders;
+    }
+
+    static void ShowProviderConfiguration(string providerId, ProviderConfiguration configuration)
+    {
+        Console.WriteLine($"  {providerId}:");
+        Console.WriteLine($"    Enabled: {configuration.Enabled}");
+        Console.WriteLine($"    Endpoint: {(string.IsNullOrWhiteSpace(configuration.Endpoint) ? "Not configured" : "Configured")}");
+        Console.WriteLine($"    Model: {(string.IsNullOrWhiteSpace(configuration.Model) ? "Not configured" : configuration.Model)}");
+        Console.WriteLine($"    API Keys: {(configuration.ApiKeys.Length > 0 ? $"{configuration.ApiKeys.Length} configured" : "Not configured")}");
     }
 
     static async Task HandleCommandAsync(ServiceProvider serviceProvider, CommandRequest request)
@@ -304,6 +334,7 @@ class Program
 
         var aiConfig = new AIConfiguration();
         configuration.GetSection("AI").Bind(aiConfig);
+        aiConfig.ApplyLegacyCompatibility();
         services.AddSingleton(aiConfig);
 
         // Core services
@@ -314,12 +345,16 @@ class Program
         services.AddSingleton<ILearningService, FileLearningService>();
 
         // HTTP clients for AI providers
-        services.AddHttpClient<OllamaAIProvider>();
+        services.AddHttpClient<OpenAIProvider>();
         services.AddHttpClient<AzureOpenAIProvider>();
+        services.AddHttpClient<AnthropicProvider>();
+        services.AddHttpClient<GeminiProvider>();
         
         // AI providers
+        services.AddSingleton<IAIProvider, OpenAIProvider>();
         services.AddSingleton<IAIProvider, AzureOpenAIProvider>();
-        services.AddSingleton<IAIProvider, OllamaAIProvider>();
+        services.AddSingleton<IAIProvider, AnthropicProvider>();
+        services.AddSingleton<IAIProvider, GeminiProvider>();
         
         // Pattern-based resolvers
         services.AddSingleton<GitCommandResolver>();
@@ -327,7 +362,9 @@ class Program
         services.AddSingleton<PatternCommandResolver>();
         
         // Main AI-powered resolver with multi-provider support
-        services.AddSingleton<ICommandResolver, MultiProviderAICommandResolver>();
+        services.AddSingleton<MultiProviderAICommandResolver>();
+        services.AddSingleton<ICommandResolver>(sp => sp.GetRequiredService<MultiProviderAICommandResolver>());
+        services.AddSingleton<IResolutionDiagnostics>(sp => sp.GetRequiredService<MultiProviderAICommandResolver>());
 
         return services;
     }

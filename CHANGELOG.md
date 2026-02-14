@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replaced local Ollama fallback with API-based multi-provider chain: OpenAI -> Azure OpenAI -> Anthropic -> Gemini.
+- Added provider-specific multi-key configuration and key rotation support.
+- Updated resolver failover policy to continue only on transient failures (timeout/network/429/5xx).
+- Expanded diagnostics output with provider-chain details and last failover trace.
+
+### Removed
+- Local Ollama provider integration from runtime wiring.
+
 ## [1.0.0] - 2025-06-08
 
 ### 🎉 Initial Release - AI Integration Milestone

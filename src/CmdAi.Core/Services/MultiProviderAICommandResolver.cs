@@ -3,13 +3,15 @@ using CmdAi.Core.Models;
 
 namespace CmdAi.Core.Services;
 
-public class MultiProviderAICommandResolver : ICommandResolver
+public class MultiProviderAICommandResolver : ICommandResolver, IResolutionDiagnostics
 {
     private readonly IEnumerable<IAIProvider> _aiProviders;
     private readonly ICommandValidator _validator;
     private readonly ILearningService _learningService;
     private readonly PatternCommandResolver _fallbackResolver;
     private readonly AIConfiguration _config;
+    private readonly object _traceLock = new();
+    private List<ProviderAttemptDiagnostics> _lastTrace = [];
 
     public MultiProviderAICommandResolver(
         IEnumerable<IAIProvider> aiProviders,
@@ -30,14 +32,23 @@ public class MultiProviderAICommandResolver : ICommandResolver
         return true;
     }
 
+    public IReadOnlyList<ProviderAttemptDiagnostics> GetLastResolutionTrace()
+    {
+        lock (_traceLock)
+        {
+            return _lastTrace.ToList();
+        }
+    }
+
     public async Task<CommandResult?> ResolveCommandAsync(CommandRequest request, CommandContext context)
     {
+        var attempts = new List<ProviderAttemptDiagnostics>();
         CommandResult? result = null;
 
         // Try AI resolution with provider priority if enabled
         if (_config.EnableAI)
         {
-            result = await TryAIResolutionWithPriorityAsync(request, context);
+            result = await TryAIResolutionWithPriorityAsync(request, context, attempts);
         }
 
         // Fall back to pattern matching if AI fails or is disabled
@@ -50,13 +61,17 @@ public class MultiProviderAICommandResolver : ICommandResolver
             }
         }
 
+        UpdateTrace(attempts);
         return result;
     }
 
-    private async Task<CommandResult?> TryAIResolutionWithPriorityAsync(CommandRequest request, CommandContext context)
+    private async Task<CommandResult?> TryAIResolutionWithPriorityAsync(
+        CommandRequest request,
+        CommandContext context,
+        List<ProviderAttemptDiagnostics> attempts)
     {
         var providers = GetOrderedProviders();
-        
+
         foreach (var provider in providers)
         {
             try
@@ -64,12 +79,26 @@ public class MultiProviderAICommandResolver : ICommandResolver
                 var result = await TryProviderAsync(provider, request, context);
                 if (result != null)
                 {
+                    attempts.Add(new ProviderAttemptDiagnostics(provider.ProviderId, provider.ModelName, true, true));
                     return result;
                 }
+
+                attempts.Add(new ProviderAttemptDiagnostics(provider.ProviderId, provider.ModelName, true, false, ProviderFailureType.Unknown, "No command returned"));
             }
-            catch (Exception)
+            catch (AIProviderException ex)
             {
-                // Continue to next provider on error
+                attempts.Add(new ProviderAttemptDiagnostics(provider.ProviderId, provider.ModelName, true, false, ex.FailureType, ex.Message));
+                if (ex.IsTransient)
+                {
+                    continue;
+                }
+
+                // Permanent failures do not move to next provider.
+                break;
+            }
+            catch (Exception ex)
+            {
+                attempts.Add(new ProviderAttemptDiagnostics(provider.ProviderId, provider.ModelName, true, false, ProviderFailureType.Unknown, ex.Message));
                 continue;
             }
         }
@@ -79,62 +108,51 @@ public class MultiProviderAICommandResolver : ICommandResolver
 
     private async Task<CommandResult?> TryProviderAsync(IAIProvider provider, CommandRequest request, CommandContext context)
     {
-        try
+        // Check if provider is available
+        var isAvailable = await provider.IsAvailableAsync();
+        if (!isAvailable)
         {
-            // Check if provider is available
-            var isAvailable = await provider.IsAvailableAsync();
-            if (!isAvailable)
-            {
-                return null;
-            }
-
-            // Get relevant examples from learning service
-            var relevantExamples = await _learningService.GetRelevantExamplesAsync(request.Tool, request.Query);
-            
-            // Build context for AI
-            var aiContext = BuildAIContext(request, context, relevantExamples);
-            
-            // Generate command using AI
-            var command = await provider.GenerateCommandAsync(request.Tool, request.Query, aiContext);
-            
-            if (string.IsNullOrWhiteSpace(command))
-            {
-                return null;
-            }
-
-            // Validate the generated command
-            var validation = await _validator.ValidateCommandAsync(command, request.Tool);
-            
-            if (!validation.IsValid)
-            {
-                return null;
-            }
-
-            // Create result with AI-specific context
-            var description = $"AI-generated {request.Tool} command";
-            var resultContext = $"Generated by {provider.ModelName}";
-            
-            if (!validation.IsSafe)
-            {
-                resultContext += " ⚠️ POTENTIALLY UNSAFE";
-                description += " (requires careful review)";
-            }
-
-            if (validation.Warnings?.Any() == true)
-            {
-                resultContext += $" | Warnings: {string.Join(", ", validation.Warnings)}";
-            }
-
-            return new CommandResult(command, description, true, resultContext);
+            throw new AIProviderException(provider.ProviderId, ProviderFailureType.Configuration, "Provider unavailable or missing configuration");
         }
-        catch (TimeoutException)
+
+        // Get relevant examples from learning service
+        var relevantExamples = await _learningService.GetRelevantExamplesAsync(request.Tool, request.Query);
+
+        // Build context for AI
+        var aiContext = BuildAIContext(request, context, relevantExamples);
+
+        // Generate command using AI
+        var command = await provider.GenerateCommandAsync(request.Tool, request.Query, aiContext);
+
+        if (string.IsNullOrWhiteSpace(command))
         {
             return null;
         }
-        catch (Exception)
+
+        // Validate the generated command
+        var validation = await _validator.ValidateCommandAsync(command, request.Tool);
+
+        if (!validation.IsValid)
         {
             return null;
         }
+
+        // Create result with AI-specific context
+        var description = $"AI-generated {request.Tool} command";
+        var resultContext = $"Generated by {provider.ModelName}";
+
+        if (!validation.IsSafe)
+        {
+            resultContext += " ⚠️ POTENTIALLY UNSAFE";
+            description += " (requires careful review)";
+        }
+
+        if (validation.Warnings?.Any() == true)
+        {
+            resultContext += $" | Warnings: {string.Join(", ", validation.Warnings)}";
+        }
+
+        return new CommandResult(command, description, true, resultContext);
     }
 
     private IEnumerable<IAIProvider> GetOrderedProviders()
@@ -145,17 +163,19 @@ public class MultiProviderAICommandResolver : ICommandResolver
         // Order providers based on configuration priority
         foreach (var providerName in configuredProviders)
         {
-            var provider = _aiProviders.FirstOrDefault(p => 
-                p.GetType().Name.ToLowerInvariant().Contains(providerName.ToLowerInvariant()));
-            
-            if (provider != null)
+            var provider = _aiProviders.FirstOrDefault(p =>
+                p.ProviderId.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+            var providerConfig = _config.GetProviderConfiguration(providerName);
+            if (provider != null && providerConfig?.Enabled == true)
             {
                 orderedProviders.Add(provider);
             }
         }
 
-        // Add any remaining providers not explicitly configured
-        var remainingProviders = _aiProviders.Where(p => !orderedProviders.Contains(p));
+        // Add any remaining enabled providers not explicitly configured.
+        var remainingProviders = _aiProviders.Where(p =>
+            !orderedProviders.Contains(p) &&
+            _config.GetProviderConfiguration(p.ProviderId)?.Enabled == true);
         orderedProviders.AddRange(remainingProviders);
 
         return orderedProviders;
@@ -188,5 +208,13 @@ public class MultiProviderAICommandResolver : ICommandResolver
         }
 
         return string.Join(". ", contextParts);
+    }
+
+    private void UpdateTrace(List<ProviderAttemptDiagnostics> attempts)
+    {
+        lock (_traceLock)
+        {
+            _lastTrace = attempts;
+        }
     }
 }
