@@ -10,7 +10,7 @@ CmdAI follows [Semantic Versioning (SemVer)](https://semver.org/) with the forma
 - **MINOR**: New functionality added in a backward compatible manner
 - **PATCH**: Backward compatible bug fixes
 
-### Current Version: `1.0.0`
+### Current Version: `1.2.6`
 - **v1.0.0**: AI integration milestone with Ollama support
 
 ### Upcoming Releases

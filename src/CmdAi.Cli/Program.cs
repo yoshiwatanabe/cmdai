@@ -18,17 +18,9 @@ class Program
 
         var rootCommand = new RootCommand("AI-powered CLI assistant that translates natural language to CLI commands");
         var rootQueryArg = new Argument<string?>("query", () => null, "Natural language request (universal mode)");
+        var rootQueryOption = new Option<string?>("--query", "Natural language request (option style)");
         rootCommand.AddArgument(rootQueryArg);
-
-        // Add custom version command (since --version is automatically handled)
-        var versionCommand = new Command("version", "Show version information");
-        versionCommand.SetHandler(() =>
-        {
-            ShowVersionInfo();
-            return Task.CompletedTask;
-        });
-        
-        rootCommand.AddCommand(versionCommand);
+        rootCommand.AddOption(rootQueryOption);
 
         // Add diagnostics command
         var diagnosticsCommand = new Command("diagnostics", "Show configuration and provider status");
@@ -52,7 +44,7 @@ class Program
             await HandleCommandAsync(serviceProvider, request);
         }, toolArg, queryArg);
 
-        var directToolCommands = new[] { "git", "az", "azure", "docker", "kubectl", "npm", "yarn", "ps", "pwsh", "powershell" };
+        var directToolCommands = new[] { "git", "az", "docker", "kubectl", "npm", "yarn", "ps" };
         foreach (var toolName in directToolCommands)
         {
             var directQueryArg = new Argument<string>("query", $"Natural language description of the {toolName} operation");
@@ -68,10 +60,23 @@ class Program
             rootCommand.AddCommand(toolCommand);
         }
 
+        rootCommand.AddCommand(BuildHiddenAliasCommand("azure", "az", serviceProvider));
+        rootCommand.AddCommand(BuildHiddenAliasCommand("pwsh", "ps", serviceProvider));
+        rootCommand.AddCommand(BuildHiddenAliasCommand("powershell", "ps", serviceProvider));
+
         rootCommand.AddCommand(askCommand);
         rootCommand.AddCommand(BuildMemoryCommand(serviceProvider));
-        rootCommand.SetHandler<string?>(async (query) =>
+        rootCommand.SetHandler<string?, string?>(async (queryArgValue, queryOptionValue) =>
         {
+            if (!string.IsNullOrWhiteSpace(queryArgValue) &&
+                !string.IsNullOrWhiteSpace(queryOptionValue) &&
+                !string.Equals(queryArgValue, queryOptionValue, StringComparison.Ordinal))
+            {
+                Console.WriteLine("Error: provide either positional <query> or --query, or ensure both values match.");
+                return;
+            }
+
+            var query = !string.IsNullOrWhiteSpace(queryOptionValue) ? queryOptionValue : queryArgValue;
             if (string.IsNullOrWhiteSpace(query))
             {
                 Console.WriteLine("Provide a natural language request or use --help.");
@@ -80,7 +85,7 @@ class Program
 
             var request = new CommandRequest("auto", query, IsDirectCommand: false);
             await HandleCommandAsync(serviceProvider, request);
-        }, rootQueryArg);
+        }, rootQueryArg, rootQueryOption);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -281,8 +286,9 @@ class Program
 
         try
         {
+            var effectiveRequest = ApplyToolHint(request);
             var context = await contextProvider.GetContextAsync();
-            var recalled = await memoryService.FindBestMatchAsync(request);
+            var recalled = await memoryService.FindBestMatchAsync(effectiveRequest);
             if (recalled?.IsHighConfidence == true)
             {
                 var memoryTool = InferToolFromCommand(recalled.Entry.Command);
@@ -302,19 +308,19 @@ class Program
                 if (useMemory)
                 {
                     var succeeded = await commandExecutor.ExecuteAsync(memoryResult, context);
-                    await memoryService.RecordAsync(request, memoryResult, true, succeeded);
-                    await learningService.RecordFeedbackAsync(request, memoryResult, true, succeeded);
+                    await memoryService.RecordAsync(effectiveRequest, memoryResult, true, succeeded);
+                    await learningService.RecordFeedbackAsync(effectiveRequest, memoryResult, true, succeeded);
                     return;
                 }
 
                 Console.WriteLine("Memory suggestion rejected. Continuing with AI inference...");
             }
 
-            var result = await commandResolver.ResolveCommandAsync(request, context);
+            var result = await commandResolver.ResolveCommandAsync(effectiveRequest, context);
 
             if (result == null)
             {
-                Console.WriteLine($"Sorry, I couldn't find a command for '{request.Query}' with {request.Tool}");
+                Console.WriteLine($"Sorry, I couldn't find a command for '{effectiveRequest.Query}' with {effectiveRequest.Tool}");
                 return;
             }
 
@@ -366,10 +372,10 @@ class Program
             // Record feedback for learning (only if AI-generated or pattern-based)
             if (result.Context?.Contains("Generated by") == true || result.Context?.Contains("Pattern-based") == true)
             {
-                await learningService.RecordFeedbackAsync(request, result, wasAccepted, wasSuccessful);
+                await learningService.RecordFeedbackAsync(effectiveRequest, result, wasAccepted, wasSuccessful);
             }
 
-            await memoryService.RecordAsync(request, result, wasAccepted, wasSuccessful);
+            await memoryService.RecordAsync(effectiveRequest, result, wasAccepted, wasSuccessful);
         }
         catch (Exception ex)
         {
@@ -380,6 +386,74 @@ class Program
     static Command BuildMemoryCommand(ServiceProvider serviceProvider)
     {
         var memoryCommand = new Command("memory", "Inspect and manage learned command memory");
+        var addCommand = new Command("add", "Add a known command to memory");
+        var addCommandArg = new Argument<string>("command", "Known command to store");
+        var addQueryOption = new Option<string?>("--query", "Optional query override");
+        var addToolOption = new Option<string?>("--tool", "Optional tool override");
+        var addForceOption = new Option<bool>("--force", "Skip confirmation prompt");
+        addCommand.AddArgument(addCommandArg);
+        addCommand.AddOption(addQueryOption);
+        addCommand.AddOption(addToolOption);
+        addCommand.AddOption(addForceOption);
+        addCommand.SetHandler<string, string?, string?, bool>(async (command, queryOverride, toolOverride, force) =>
+        {
+            var memoryService = serviceProvider.GetRequiredService<IMemoryService>();
+            var queryGenerator = serviceProvider.GetRequiredService<IMemoryQueryGenerator>();
+            var validator = serviceProvider.GetRequiredService<ICommandValidator>();
+
+            var inferredTool = !string.IsNullOrWhiteSpace(toolOverride)
+                ? toolOverride.Trim().ToLowerInvariant()
+                : InferToolFromCommand(command);
+
+            var validation = await validator.ValidateCommandAsync(command, inferredTool);
+            if (!validation.IsValid)
+            {
+                Console.WriteLine($"Warning: command may not be a valid {inferredTool} command.");
+                Console.WriteLine($"Validator message: {validation.ValidationMessage}");
+            }
+
+            string generatedQuery;
+            if (!string.IsNullOrWhiteSpace(queryOverride))
+            {
+                generatedQuery = queryOverride.Trim();
+            }
+            else
+            {
+                try
+                {
+                    generatedQuery = await queryGenerator.GenerateShortQueryAsync(inferredTool, command);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: unable to generate query for memory add. {ex.Message}");
+                    return;
+                }
+            }
+
+            Console.WriteLine("Memory add preview:");
+            Console.WriteLine($"  Command: {command}");
+            Console.WriteLine($"  Tool: {inferredTool}");
+            Console.WriteLine($"  Query: {generatedQuery}");
+            Console.WriteLine("  Trust: accepted=true successful=true");
+
+            var confirmed = force;
+            if (!force)
+            {
+                Console.Write("Save this memory entry? (y/N): ");
+                var input = Console.ReadLine()?.Trim().ToLowerInvariant();
+                confirmed = input == "y" || input == "yes";
+            }
+
+            if (!confirmed)
+            {
+                Console.WriteLine("Cancelled.");
+                return;
+            }
+
+            await memoryService.AddKnownCommandAsync(command, generatedQuery, inferredTool, trusted: true);
+            Console.WriteLine("Memory entry saved.");
+        }, addCommandArg, addQueryOption, addToolOption, addForceOption);
+
         var listCommand = new Command("list", "List recent memory entries");
         var limitOption = new Option<int>("--limit", () => 20, "Maximum entries to show");
         listCommand.AddOption(limitOption);
@@ -417,9 +491,27 @@ class Program
             Console.WriteLine("Memory cleared.");
         });
 
+        memoryCommand.AddCommand(addCommand);
         memoryCommand.AddCommand(listCommand);
         memoryCommand.AddCommand(clearCommand);
         return memoryCommand;
+    }
+
+    static Command BuildHiddenAliasCommand(string aliasName, string canonicalTool, ServiceProvider serviceProvider)
+    {
+        var aliasQueryArg = new Argument<string>("query", $"Natural language description of the {aliasName} operation");
+        var aliasCommand = new Command(aliasName, $"Alias for {canonicalTool} command assistance")
+        {
+            IsHidden = true
+        };
+        aliasCommand.AddArgument(aliasQueryArg);
+        aliasCommand.SetHandler<string>(async (query) =>
+        {
+            var request = new CommandRequest(canonicalTool, query, IsDirectCommand: true);
+            await HandleCommandAsync(serviceProvider, request);
+        }, aliasQueryArg);
+
+        return aliasCommand;
     }
 
     static string InferToolFromCommand(string command)
@@ -430,6 +522,48 @@ class Program
     static string? GetFirstToken(string command)
     {
         return command.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+    }
+
+    static CommandRequest ApplyToolHint(CommandRequest request)
+    {
+        if (!request.Tool.Equals("auto", StringComparison.OrdinalIgnoreCase))
+        {
+            return request;
+        }
+
+        var inferredTool = InferToolFromQuery(request.Query);
+        if (string.IsNullOrWhiteSpace(inferredTool))
+        {
+            return request;
+        }
+
+        return request with { Tool = inferredTool };
+    }
+
+    static string? InferToolFromQuery(string query)
+    {
+        var lowered = query.ToLowerInvariant();
+        var candidates = new[]
+        {
+            "git", "docker", "kubectl", "az", "azure", "npm", "yarn", "powershell", "pwsh", "ps"
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (lowered.Contains($"with {candidate}") ||
+                lowered.Contains($"{candidate} ") ||
+                lowered.Contains($" {candidate}") ||
+                lowered.StartsWith(candidate + " ", StringComparison.Ordinal))
+            {
+                return candidate switch
+                {
+                    "powershell" or "pwsh" => "ps",
+                    _ => candidate
+                };
+            }
+        }
+
+        return null;
     }
 
     static ServiceCollection ConfigureServices()
@@ -471,6 +605,7 @@ class Program
         services.AddSingleton<ICommandValidator, CommandValidator>();
         services.AddSingleton<ILearningService, FileLearningService>();
         services.AddSingleton<IMemoryService, FileMemoryService>();
+        services.AddSingleton<IMemoryQueryGenerator, MemoryQueryGenerator>();
         services.AddSingleton<IToolAvailabilityService, ToolAvailabilityService>();
         services.AddSingleton<ICommandFallbackService, CommandFallbackService>();
 

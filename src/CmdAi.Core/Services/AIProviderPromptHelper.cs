@@ -14,6 +14,16 @@ internal static class AIProviderPromptHelper
 
         switch (tool.ToLowerInvariant())
         {
+            case "__memory_query__":
+                sb.Clear();
+                sb.AppendLine("You generate concise user intent queries from commands.");
+                sb.AppendLine("Return exactly one short natural language query (5-12 words).");
+                sb.AppendLine("Do not return a command.");
+                sb.AppendLine("Do not include bullets, quotes, or extra text.");
+                sb.AppendLine();
+                sb.AppendLine($"Command: {query}");
+                sb.AppendLine("Query:");
+                return sb.ToString();
             case "git":
                 sb.AppendLine("Tool: Git");
                 sb.AppendLine("Examples:");

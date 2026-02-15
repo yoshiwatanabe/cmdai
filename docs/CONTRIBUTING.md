@@ -152,7 +152,7 @@ public void MethodName_StateUnderTest_ExpectedBehavior()
 ### Documentation Requirements
 - **Update README.md** for new features
 - **Add XML documentation** for public APIs
-- **Update OLLAMA_SETUP.md** for AI-related changes
+- **Update SETUP.md** for AI-related changes
 - **Include usage examples** in code comments
 
 ### Documentation Style

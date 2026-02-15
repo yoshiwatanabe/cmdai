@@ -87,27 +87,27 @@ public class FileMemoryService : IMemoryService
     {
         lock (_lock)
         {
-            var sanitizedQuery = Redact(request.Query);
-            var sanitizedCommand = Redact(result.Command);
-            var normalizedTool = NormalizeTool(request.Tool, sanitizedCommand);
-            var confidence = CalculateConfidence(wasAccepted, wasSuccessful);
-            var hash = BuildContentHash(normalizedTool, sanitizedQuery, sanitizedCommand);
+            RecordInternal(
+                request.Tool,
+                request.Query,
+                result.Command,
+                wasAccepted,
+                wasSuccessful,
+                CalculateConfidence(wasAccepted, wasSuccessful));
+        }
 
-            var memoryEvent = new MemoryEvent(
-                EventId: Guid.NewGuid().ToString("N"),
-                MachineId: _machineId,
-                TimestampUtc: DateTime.UtcNow,
-                Tool: normalizedTool,
-                Query: sanitizedQuery,
-                Command: sanitizedCommand,
-                WasAccepted: wasAccepted,
-                WasSuccessful: wasSuccessful,
-                ContentHash: hash,
-                ConfidenceScore: confidence);
+        return Task.CompletedTask;
+    }
 
-            AppendEvent(memoryEvent);
-            UpsertEntry(memoryEvent);
-            SaveSidecarIndex();
+    public Task AddKnownCommandAsync(string command, string query, string tool, bool trusted = true)
+    {
+        lock (_lock)
+        {
+            var normalizedTool = string.IsNullOrWhiteSpace(tool)
+                ? NormalizeTool("auto", command)
+                : tool;
+            var confidence = trusted ? 1.0 : 0.7;
+            RecordInternal(normalizedTool, query, command, trusted, trusted, confidence);
         }
 
         return Task.CompletedTask;
@@ -508,5 +508,35 @@ public class FileMemoryService : IMemoryService
         }
 
         File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
+    }
+
+    private void RecordInternal(
+        string requestedTool,
+        string rawQuery,
+        string rawCommand,
+        bool wasAccepted,
+        bool wasSuccessful,
+        double confidenceScore)
+    {
+        var sanitizedQuery = Redact(rawQuery);
+        var sanitizedCommand = Redact(rawCommand);
+        var normalizedTool = NormalizeTool(requestedTool, sanitizedCommand);
+        var hash = BuildContentHash(normalizedTool, sanitizedQuery, sanitizedCommand);
+
+        var memoryEvent = new MemoryEvent(
+            EventId: Guid.NewGuid().ToString("N"),
+            MachineId: _machineId,
+            TimestampUtc: DateTime.UtcNow,
+            Tool: normalizedTool,
+            Query: sanitizedQuery,
+            Command: sanitizedCommand,
+            WasAccepted: wasAccepted,
+            WasSuccessful: wasSuccessful,
+            ContentHash: hash,
+            ConfidenceScore: confidenceScore);
+
+        AppendEvent(memoryEvent);
+        UpsertEntry(memoryEvent);
+        SaveSidecarIndex();
     }
 }

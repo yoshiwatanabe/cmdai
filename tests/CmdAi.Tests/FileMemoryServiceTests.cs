@@ -75,4 +75,55 @@ public class FileMemoryServiceTests
             }
         }
     }
+
+    [Fact]
+    public async Task AddKnownCommandAsync_UpsertsDuplicateEntries()
+    {
+        var storePath = Path.Combine(Path.GetTempPath(), "cmdai-memory-test-" + Guid.NewGuid().ToString("N"));
+        var config = new MemoryConfiguration { StorePath = storePath };
+        var originalCurrentDirectory = Directory.GetCurrentDirectory();
+        var isolatedCurrentDirectory = Path.Combine(Path.GetTempPath(), "cmdai-cwd-test-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            Directory.CreateDirectory(isolatedCurrentDirectory);
+            Directory.SetCurrentDirectory(isolatedCurrentDirectory);
+            var service = new FileMemoryService(config);
+            await service.AddKnownCommandAsync(
+                "dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release",
+                "build release package",
+                "dotnet",
+                trusted: true);
+
+            var before = await service.ListAsync(10);
+            Assert.Single(before.Where(e =>
+                e.Command.Equals("dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release", StringComparison.OrdinalIgnoreCase) &&
+                e.Query.Equals("build release package", StringComparison.OrdinalIgnoreCase)));
+
+            await Task.Delay(20);
+            await service.AddKnownCommandAsync(
+                "dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release",
+                "build release package",
+                "dotnet",
+                trusted: true);
+
+            var after = await service.ListAsync(10);
+            Assert.Single(after.Where(e =>
+                e.Command.Equals("dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release", StringComparison.OrdinalIgnoreCase) &&
+                e.Query.Equals("build release package", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(originalCurrentDirectory);
+            if (Directory.Exists(storePath))
+            {
+                Directory.Delete(storePath, recursive: true);
+            }
+
+            if (Directory.Exists(isolatedCurrentDirectory))
+            {
+                Directory.Delete(isolatedCurrentDirectory, recursive: true);
+            }
+        }
+    }
 }

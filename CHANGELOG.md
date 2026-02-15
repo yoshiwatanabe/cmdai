@@ -113,10 +113,10 @@ dotnet tool update --global CmdAi.Cli
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to CmdAI.
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines on contributing to CmdAI.
 
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/yoshiwatanabe/cmdai/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yoshiwatanabe/cmdai/discussions)
-- **Documentation**: [README.md](README.md) and [OLLAMA_SETUP.md](cmdai/OLLAMA_SETUP.md)
+- **Documentation**: [README.md](README.md) and [docs/SETUP.md](docs/SETUP.md)

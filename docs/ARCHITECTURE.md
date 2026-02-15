@@ -120,6 +120,6 @@ sequenceDiagram
 
 ## References
 
-- `README.md`
+- `../README.md`
 - `SETUP.md`
 - `CONTRIBUTING.md`

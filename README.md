@@ -17,7 +17,13 @@ Default provider chain:
 dotnet tool install --global --add-source . CmdAi.Cli
 ```
 
-For a complete setup from `git clone` through installing on both Windows and WSL, see `INSTALL.md`.
+For a complete setup from `git clone` through installing on both Windows and WSL, see `docs/INSTALL.md`.
+
+Additional docs:
+- `docs/SETUP.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CONTRIBUTING.md`
+- `docs/VERSIONING.md`
 
 ## WSL (Recommended)
 
@@ -66,6 +72,7 @@ AI__Providers__3=gemini
 
 ```bash
 cmdai "I'm on WSL and need to find CONFIG_ROOT in .ts files recursively"
+cmdai --query "with git, how do I show remote repo urls?"
 cmdai git "delete untracked files"
 cmdai az "list subscriptions"
 cmdai docker "show running containers"
@@ -75,6 +82,7 @@ cmdai kubectl "get pods"
 Memory controls:
 
 ```bash
+cmdai memory add "dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release"
 cmdai memory list --limit 20
 cmdai memory clear
 ```

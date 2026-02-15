@@ -6,6 +6,7 @@ public interface IMemoryService
 {
     Task<MemoryMatch?> FindBestMatchAsync(CommandRequest request);
     Task RecordAsync(CommandRequest request, CommandResult result, bool wasAccepted, bool wasSuccessful);
+    Task AddKnownCommandAsync(string command, string query, string tool, bool trusted = true);
     Task<IReadOnlyList<MemoryEntry>> ListAsync(int? limit = null);
     Task ClearAsync();
 }

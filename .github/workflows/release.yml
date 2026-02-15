@@ -106,6 +106,6 @@ jobs:
           See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
           
           ### Ollama Setup
-          For AI features, see [OLLAMA_SETUP.md](cmdai/OLLAMA_SETUP.md) for setup instructions.
+          For AI features, see [docs/SETUP.md](docs/SETUP.md) for setup instructions.
         draft: false
         prerelease: false
