@@ -10,7 +10,7 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-PROJECT_DIR="$(dirname "$0")/../cmdai/src/CmdAi.Cli"
+PROJECT_DIR="$(dirname "$0")/../src/CmdAi.Cli"
 NUGET_SOURCE="https://api.nuget.org/v3/index.json"
 
 usage() {

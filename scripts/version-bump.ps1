@@ -88,7 +88,7 @@ function Get-IncrementedVersion {
 
 # Main script
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectFile = Join-Path $scriptDir "..\cmdai\src\CmdAi.Cli\CmdAi.Cli.csproj"
+$projectFile = Join-Path $scriptDir "..\src\CmdAi.Cli\CmdAi.Cli.csproj"
 
 # Check if project file exists
 if (-not (Test-Path $projectFile)) {

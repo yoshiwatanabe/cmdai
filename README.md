@@ -24,6 +24,7 @@ Additional docs:
 - `docs/ARCHITECTURE.md`
 - `docs/CONTRIBUTING.md`
 - `docs/VERSIONING.md`
+- `docs/CICD.md` - **CI/CD Setup & Release Guide**
 
 ## WSL (Recommended)
 
