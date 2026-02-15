@@ -26,17 +26,17 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Restore dependencies
-      run: dotnet restore cmdai/CmdAi.sln
+      run: dotnet restore CmdAi.sln
       
     - name: Build solution
-      run: dotnet build cmdai/CmdAi.sln --configuration Release --no-restore
+      run: dotnet build CmdAi.sln --configuration Release --no-restore
       
     - name: Run tests
-      run: dotnet test cmdai/CmdAi.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test CmdAi.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
       
     - name: Test packaging
       run: |
-        cd cmdai/src/CmdAi.Cli
+        cd src/CmdAi.Cli
         dotnet pack --configuration Release --output ./nupkg --no-build
         
     - name: Upload test results
