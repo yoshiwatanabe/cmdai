@@ -41,7 +41,7 @@ jobs:
     - name: Update version in project file
       run: |
         VERSION="${{ steps.version.outputs.VERSION }}"
-        PROJECT_FILE="cmdai/src/CmdAi.Cli/CmdAi.Cli.csproj"
+        PROJECT_FILE="src/CmdAi.Cli/CmdAi.Cli.csproj"
         
         # Update version fields
         sed -i "s|<Version>[^<]*</Version>|<Version>$VERSION</Version>|" "$PROJECT_FILE"
@@ -57,29 +57,29 @@ jobs:
         echo "Updated project file with version $VERSION"
         
     - name: Restore dependencies
-      run: dotnet restore cmdai/CmdAi.sln
+      run: dotnet restore CmdAi.sln
       
     - name: Build solution
-      run: dotnet build cmdai/CmdAi.sln --configuration Release --no-restore
+      run: dotnet build CmdAi.sln --configuration Release --no-restore
       
     - name: Run tests
-      run: dotnet test cmdai/CmdAi.sln --configuration Release --no-build --verbosity normal
+      run: dotnet test CmdAi.sln --configuration Release --no-build --verbosity normal
       
     - name: Pack NuGet package
       run: |
-        cd cmdai/src/CmdAi.Cli
+        cd src/CmdAi.Cli
         dotnet pack --configuration Release --output ./nupkg --no-build
         
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-package
-        path: cmdai/src/CmdAi.Cli/nupkg/*.nupkg
+        path: src/CmdAi.Cli/nupkg/*.nupkg
         
     - name: Publish to NuGet.org
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       run: |
-        cd cmdai/src/CmdAi.Cli/nupkg
+        cd src/CmdAi.Cli/nupkg
         dotnet nuget push *.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         
     - name: Create GitHub Release
