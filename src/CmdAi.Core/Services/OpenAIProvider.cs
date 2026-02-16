@@ -39,6 +39,9 @@ public class OpenAIProvider : IAIProvider
     {
         ValidateConfiguration();
         var prompt = AIProviderPromptHelper.BuildPrompt(tool, naturalLanguageQuery, context);
+        var maxCompletionTokens = tool.Equals("__memory_query__", StringComparison.OrdinalIgnoreCase)
+            ? 2048
+            : 512;
         var request = new
         {
             model = _config.OpenAI.Model,
@@ -46,7 +49,8 @@ public class OpenAIProvider : IAIProvider
             {
                 new { role = "user", content = prompt }
             },
-            max_completion_tokens = 256
+            // gpt-5 family models can return empty content with finish_reason=length at low caps.
+            max_completion_tokens = maxCompletionTokens
         };
 
         AIProviderException? lastError = null;

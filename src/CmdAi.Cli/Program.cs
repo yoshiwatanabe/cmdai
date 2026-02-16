@@ -242,6 +242,30 @@ class Program
                 }
             }
         }
+
+        if (serviceProvider.GetService<IMemoryQueryDiagnostics>() is { } memoryDiagnostics)
+        {
+            Console.WriteLine();
+            Console.WriteLine("🧾 Last Memory Query Trace:");
+            var trace = memoryDiagnostics.GetLastMemoryQueryTrace();
+            if (trace.Count == 0)
+            {
+                Console.WriteLine("  No memory query attempts were recorded yet.");
+            }
+            else
+            {
+                foreach (var attempt in trace)
+                {
+                    var status = attempt.Succeeded ? "✅ Success" : "❌ Failed";
+                    var failureType = attempt.FailureType.HasValue ? $" [{attempt.FailureType.Value}]" : string.Empty;
+                    Console.WriteLine($"  {attempt.ProviderId}: {status}{failureType}");
+                    if (!string.IsNullOrWhiteSpace(attempt.Message))
+                    {
+                        Console.WriteLine($"    {attempt.Message}");
+                    }
+                }
+            }
+        }
     }
 
     static IEnumerable<IAIProvider> GetOrderedProvidersForDiagnostics(IEnumerable<IAIProvider> aiProviders, AIConfiguration config)
@@ -422,6 +446,17 @@ class Program
                 try
                 {
                     generatedQuery = await queryGenerator.GenerateShortQueryAsync(inferredTool, command);
+                }
+                catch (MemoryQueryGenerationException ex)
+                {
+                    Console.WriteLine($"Error: unable to generate query for memory add. {ex.Message}");
+                    foreach (var attempt in ex.Attempts)
+                    {
+                        var failureType = attempt.FailureType?.ToString() ?? "Unknown";
+                        var message = string.IsNullOrWhiteSpace(attempt.Message) ? "No details available" : attempt.Message;
+                        Console.WriteLine($"  {attempt.ProviderId} ({attempt.ModelName}): {failureType} - {message}");
+                    }
+                    return;
                 }
                 catch (Exception ex)
                 {
@@ -605,7 +640,9 @@ class Program
         services.AddSingleton<ICommandValidator, CommandValidator>();
         services.AddSingleton<ILearningService, FileLearningService>();
         services.AddSingleton<IMemoryService, FileMemoryService>();
-        services.AddSingleton<IMemoryQueryGenerator, MemoryQueryGenerator>();
+        services.AddSingleton<MemoryQueryGenerator>();
+        services.AddSingleton<IMemoryQueryGenerator>(sp => sp.GetRequiredService<MemoryQueryGenerator>());
+        services.AddSingleton<IMemoryQueryDiagnostics>(sp => sp.GetRequiredService<MemoryQueryGenerator>());
         services.AddSingleton<IToolAvailabilityService, ToolAvailabilityService>();
         services.AddSingleton<ICommandFallbackService, CommandFallbackService>();
 
