@@ -6,7 +6,7 @@ set -e
 echo "🔨 Building CmdAI for development..."
 
 # Navigate to project directory
-cd "$(dirname "$0")/../cmdai/src/CmdAi.Cli"
+cd "$(dirname "$0")/../src/CmdAi.Cli"
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."

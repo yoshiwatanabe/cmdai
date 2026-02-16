@@ -7,7 +7,7 @@ Write-Host "🔨 Building CmdAI for development..." -ForegroundColor Green
 
 # Navigate to project directory
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectDir = Join-Path $scriptDir "..\cmdai\src\CmdAi.Cli"
+$projectDir = Join-Path $scriptDir "..\src\CmdAi.Cli"
 Set-Location $projectDir
 
 try {

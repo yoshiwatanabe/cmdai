@@ -10,7 +10,7 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-PROJECT_FILE="$(dirname "$0")/../cmdai/src/CmdAi.Cli/CmdAi.Cli.csproj"
+PROJECT_FILE="$(dirname "$0")/../src/CmdAi.Cli/CmdAi.Cli.csproj"
 
 usage() {
     echo "Usage: $0 <major|minor|patch> [version]"
