@@ -41,7 +41,7 @@ Then from WSL (install from the Windows-mounted nupkg folder):
 ```bash
 dotnet tool install --global --add-source /mnt/c/Users/tsuyo/Repos/cmdai/src/CmdAi.Cli/nupkg CmdAi.Cli
 export PATH="$PATH:$HOME/.dotnet/tools"
-cmdai version
+cmdai --version
 ```
 
 ## Configure
@@ -94,7 +94,7 @@ cmdai memory clear
 cmdai diagnostics
 ```
 
-This reports provider chain, availability, and last failover trace.
+This reports provider chain, availability, last failover trace, and last memory-query trace.
 
 ## Notes
 

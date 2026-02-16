@@ -79,6 +79,7 @@ Compatibility behavior:
 - Provider enablement and config status
 - Provider availability checks
 - Last resolution failover trace (provider-by-provider attempt outcomes)
+- Last memory-query trace (provider-by-provider attempts from `cmdai memory add`)
 
 ## Dependency Injection
 

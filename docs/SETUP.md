@@ -45,6 +45,16 @@ AI__Anthropic__ApiKeys__0=...
 AI__Gemini__ApiKeys__0=...
 ```
 
+Provider-specific keys are preferred over legacy Azure compatibility keys:
+- Preferred: `AI__AzureOpenAI__ApiKeys__0`, `AI__AzureOpenAI__Endpoint`
+- Legacy (still supported): `AI__AzureOpenAIApiKey`, `AI__AzureOpenAIEndpoint`
+
+Gemini endpoint should be:
+
+```bash
+AI__Gemini__Endpoint=https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+```
+
 ## 3) Provider order
 
 Default order is already set:

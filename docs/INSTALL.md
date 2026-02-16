@@ -62,7 +62,7 @@ Verify:
 
 ```powershell
 Get-Command cmdai
-cmdai version
+cmdai --version
 cmdai diagnostics
 ```
 
@@ -97,7 +97,7 @@ In WSL, install from the Windows-mounted nupkg folder:
 ```bash
 dotnet tool install --global --add-source /mnt/c/Users/tsuyo/Repos/cmdai/src/CmdAi.Cli/nupkg CmdAi.Cli
 export PATH="$PATH:$HOME/.dotnet/tools"
-cmdai version
+cmdai --version
 ```
 
 If you already installed it before:
@@ -119,7 +119,7 @@ dotnet test
 dotnet pack ./src/CmdAi.Cli/CmdAi.Cli.csproj -c Release
 dotnet tool install --global --add-source ./src/CmdAi.Cli/nupkg CmdAi.Cli
 export PATH="$PATH:$HOME/.dotnet/tools"
-cmdai version
+cmdai --version
 ```
 
 ## 6) Configure providers (WSL)

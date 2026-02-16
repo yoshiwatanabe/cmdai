@@ -147,6 +147,23 @@ public void MethodName_StateUnderTest_ExpectedBehavior()
 - Aim for **high test coverage** of core logic
 - **Mock external dependencies** (AI providers, file system)
 
+### Provider Integration Tests (Opt-In)
+Real provider integration tests are opt-in and disabled by default.
+
+```bash
+# Run all provider integration tests
+RUN_CMD_AI_INTEGRATION_TESTS=true dotnet test --filter "FullyQualifiedName~ProviderIntegrationTests"
+
+# Run a single provider integration test
+RUN_CMD_AI_INTEGRATION_TESTS=true dotnet test --filter "FullyQualifiedName~GeminiProvider_RealApi_GeneratesCommand"
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:RUN_CMD_AI_INTEGRATION_TESTS="true"
+dotnet test --filter "FullyQualifiedName~ProviderIntegrationTests"
+```
+
 ## 📚 Documentation
 
 ### Documentation Requirements
@@ -185,16 +202,14 @@ public void MethodName_StateUnderTest_ExpectedBehavior()
 # Build and install locally
 ./scripts/build-dev.sh
 
-# Debug with verbose output
-cmdai ask git "status" --verbose
-
-# Check logs
-cat ~/.cmdai/logs/cmdai.log
+# Run diagnostics and a smoke test command
+cmdai diagnostics
+cmdai ask git "status"
 ```
 
 ### Common Issues
 - **Path issues**: Ensure `~/.dotnet/tools` is in PATH
-- **AI not working**: Check Ollama is running on localhost:11434
+- **AI not working**: Run `cmdai diagnostics` and verify provider keys/endpoints and provider priority
 - **Permission errors**: Run with appropriate permissions
 
 ## 📋 Pull Request Template
@@ -226,7 +241,7 @@ Brief description of changes
 ## 🎯 Areas for Contribution
 
 ### High Priority
-- **Additional AI providers** (OpenAI, Anthropic, local models)
+- **Additional AI providers** (cloud/API providers)
 - **Shell integration** (bash, zsh, PowerShell completion)
 - **Performance improvements** (caching, optimization)
 - **Security enhancements** (command validation)

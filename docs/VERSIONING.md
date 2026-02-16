@@ -171,7 +171,7 @@ The main configuration is in `cmdai/src/CmdAi.Cli/CmdAi.Cli.csproj`:
 ```bash
 # Check current version
 cmdai --version          # Shows version number
-cmdai version           # Shows detailed version info
+cmdai diagnostics       # Shows configuration and provider status
 
 # Update to latest version
 dotnet tool update --global CmdAi.Cli
