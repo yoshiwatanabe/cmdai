@@ -164,6 +164,14 @@ $env:RUN_CMD_AI_INTEGRATION_TESTS="true"
 dotnet test --filter "FullyQualifiedName~ProviderIntegrationTests"
 ```
 
+### Quick Provider Comparison (OpenAI vs Azure Foundry)
+Run both provider integration tests in one command:
+
+```powershell
+$env:RUN_CMD_AI_INTEGRATION_TESTS="true"
+dotnet test --filter "FullyQualifiedName~OpenAIProvider_RealApi_GeneratesCommand|FullyQualifiedName~AzureOpenAIProvider_RealApi_GeneratesCommand"
+```
+
 ## 📚 Documentation
 
 ### Documentation Requirements

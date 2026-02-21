@@ -48,7 +48,7 @@ Failover policy:
 
 ### AI Provider Layer
 - `OpenAIProvider`
-- `AzureOpenAIProvider`
+- `AzureOpenAIProvider` (Azure Foundry/OpenAI-v1 style endpoint + model)
 - `AnthropicProvider`
 - `GeminiProvider`
 

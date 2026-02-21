@@ -52,6 +52,14 @@ Provider-specific Azure keys are required for Foundry mode:
 - `AI__AzureOpenAI__Model` (deployment/model name)
 - `AI__AzureOpenAI__ApiKeys__0`
 
+Example:
+
+```bash
+AI__AzureOpenAI__Endpoint=https://yoshi-default-foundry-resource.openai.azure.com/openai/v1/
+AI__AzureOpenAI__Model=DeepSeek-R1-0528
+AI__AzureOpenAI__ApiKeys__0=...
+```
+
 Gemini endpoint should be:
 
 ```bash

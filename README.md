@@ -62,6 +62,10 @@ AI__Anthropic__ApiKeys__0=your_anthropic_key
 AI__Gemini__ApiKeys__0=your_gemini_key
 ```
 
+Azure provider in CmdAI is configured for Azure Foundry/OpenAI-v1 style:
+- `AI__AzureOpenAI__Endpoint` should be a base URL such as `https://<resource>.openai.azure.com/openai/v1/`
+- `AI__AzureOpenAI__Model` should be your deployment/model name (for example `DeepSeek-R1-0528`)
+
 Provider priority is configurable:
 
 ```bash
@@ -69,6 +73,15 @@ AI__Providers__0=openai
 AI__Providers__1=azureopenai
 AI__Providers__2=anthropic
 AI__Providers__3=gemini
+```
+
+## Evaluate Models
+
+You can compare OpenAI vs Azure Foundry (DeepSeek) inference quality with opt-in live tests:
+
+```powershell
+$env:RUN_CMD_AI_INTEGRATION_TESTS="true"
+dotnet test --filter "FullyQualifiedName~OpenAIProvider_RealApi_GeneratesCommand|FullyQualifiedName~AzureOpenAIProvider_RealApi_GeneratesCommand"
 ```
 
 ## Usage

@@ -79,6 +79,14 @@ AI__OpenAI__ApiKeys__0=your_openai_api_key
 Memory__StorePath=C:\Users\<you>\OneDrive\cmdai-memory
 ```
 
+Optional Azure Foundry (DeepSeek) configuration:
+
+```text
+AI__AzureOpenAI__Endpoint=https://<resource>.openai.azure.com/openai/v1/
+AI__AzureOpenAI__Model=DeepSeek-R1-0528
+AI__AzureOpenAI__ApiKeys__0=your_azure_key
+```
+
 Verify:
 
 ```powershell
