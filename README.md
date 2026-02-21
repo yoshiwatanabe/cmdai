@@ -55,6 +55,8 @@ AI__OpenAI__ApiKeys__0=your_openai_key
 Optional additional fallbacks:
 
 ```bash
+AI__AzureOpenAI__Endpoint=https://your-resource.openai.azure.com/openai/v1/
+AI__AzureOpenAI__Model=DeepSeek-R1-0528
 AI__AzureOpenAI__ApiKeys__0=your_azure_key
 AI__Anthropic__ApiKeys__0=your_anthropic_key
 AI__Gemini__ApiKeys__0=your_gemini_key

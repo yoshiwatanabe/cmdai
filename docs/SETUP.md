@@ -40,14 +40,17 @@ Recommended full fallback chain:
 
 ```bash
 AI__OpenAI__ApiKeys__0=...
+AI__AzureOpenAI__Endpoint=https://your-resource.openai.azure.com/openai/v1/
+AI__AzureOpenAI__Model=DeepSeek-R1-0528
 AI__AzureOpenAI__ApiKeys__0=...
 AI__Anthropic__ApiKeys__0=...
 AI__Gemini__ApiKeys__0=...
 ```
 
-Provider-specific keys are preferred over legacy Azure compatibility keys:
-- Preferred: `AI__AzureOpenAI__ApiKeys__0`, `AI__AzureOpenAI__Endpoint`
-- Legacy (still supported): `AI__AzureOpenAIApiKey`, `AI__AzureOpenAIEndpoint`
+Provider-specific Azure keys are required for Foundry mode:
+- `AI__AzureOpenAI__Endpoint` (Foundry/OpenAI-v1 base URL)
+- `AI__AzureOpenAI__Model` (deployment/model name)
+- `AI__AzureOpenAI__ApiKeys__0`
 
 Gemini endpoint should be:
 

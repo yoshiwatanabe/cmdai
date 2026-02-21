@@ -46,8 +46,8 @@ public sealed class ProviderIntegrationTests
             return;
         }
 
-        var endpoint = GetOptionalSetting("AI__AzureOpenAI__Endpoint") ?? GetOptionalSetting("AI__AzureOpenAIEndpoint");
-        var apiKey = GetOptionalSetting("AI__AzureOpenAI__ApiKeys__0") ?? GetOptionalSetting("AI__AzureOpenAIApiKey");
+        var endpoint = GetOptionalSetting("AI__AzureOpenAI__Endpoint");
+        var apiKey = GetOptionalSetting("AI__AzureOpenAI__ApiKeys__0");
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey))
         {
             return;
@@ -58,7 +58,7 @@ public sealed class ProviderIntegrationTests
         {
             Enabled = true,
             Endpoint = endpoint,
-            Model = GetValueOrDefault("AI__AzureOpenAI__Model", "model-router"),
+            Model = GetValueOrDefault("AI__AzureOpenAI__Model", "DeepSeek-R1-0528"),
             ApiKeys = [apiKey]
         };
 

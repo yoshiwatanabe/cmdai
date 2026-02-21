@@ -78,6 +78,17 @@ internal static class AIProviderPromptHelper
 
     public static string ExtractCommand(string response)
     {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return string.Empty;
+        }
+
+        var codeBlockCommand = TryExtractFromCodeFence(response);
+        if (!string.IsNullOrWhiteSpace(codeBlockCommand))
+        {
+            return codeBlockCommand;
+        }
+
         var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         foreach (var line in lines)
         {
@@ -91,8 +102,35 @@ internal static class AIProviderPromptHelper
             if (trimmed.Contains("command is", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("you can use", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Contains("this will", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Contains("here's", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.Length < 3)
             {
+                continue;
+            }
+
+            if (trimmed.StartsWith("```", StringComparison.Ordinal) ||
+                trimmed.Equals("powershell", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("bash", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("shell", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (trimmed.EndsWith(':') &&
+                (trimmed.Contains("use", StringComparison.OrdinalIgnoreCase) ||
+                 trimmed.Contains("command", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (trimmed.StartsWith("Command:", StringComparison.OrdinalIgnoreCase))
+            {
+                var candidate = trimmed["Command:".Length..].Trim();
+                if (!string.IsNullOrWhiteSpace(candidate))
+                {
+                    return candidate;
+                }
+
                 continue;
             }
 
@@ -103,5 +141,46 @@ internal static class AIProviderPromptHelper
         }
 
         return response.Trim();
+    }
+
+    private static string? TryExtractFromCodeFence(string response)
+    {
+        var startFence = response.IndexOf("```", StringComparison.Ordinal);
+        if (startFence < 0)
+        {
+            return null;
+        }
+
+        var afterStart = response.IndexOf('\n', startFence);
+        if (afterStart < 0)
+        {
+            return null;
+        }
+
+        var endFence = response.IndexOf("```", afterStart + 1, StringComparison.Ordinal);
+        if (endFence < 0)
+        {
+            return null;
+        }
+
+        var block = response[(afterStart + 1)..endFence];
+        var lines = block.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                continue;
+            }
+
+            if (trimmed.StartsWith("$") || trimmed.StartsWith(">") || trimmed.StartsWith("#"))
+            {
+                trimmed = trimmed[1..].Trim();
+            }
+
+            return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+        }
+
+        return null;
     }
 }

@@ -3,6 +3,7 @@ using CmdAi.Core.Models;
 using System.Text;
 using System.Text.Json;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace CmdAi.Core.Services;
 
@@ -43,61 +44,57 @@ public class AzureOpenAIProvider : IAIProvider
     {
         ValidateConfiguration();
         var prompt = AIProviderPromptHelper.BuildPrompt(tool, naturalLanguageQuery, context);
+        var endpoint = BuildEndpoint();
         var request = new
         {
+            model = _config.AzureOpenAI.Model,
             messages = new[]
             {
                 new { role = "user", content = prompt }
-            },
-            max_tokens = 256,
-            temperature = 0.1,
-            top_p = 0.9,
-            frequency_penalty = 0,
-            presence_penalty = 0
+            }
         };
 
         AIProviderException? lastError = null;
+        var json = JsonSerializer.Serialize(request);
 
         foreach (var apiKey in _config.AzureOpenAI.ApiKeys)
         {
             try
             {
-                var json = JsonSerializer.Serialize(request);
-                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _config.AzureOpenAI.Endpoint);
-                httpRequest.Headers.Add("api-key", apiKey);
-                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.SendAsync(httpRequest);
-                if (!response.IsSuccessStatusCode)
+                return await SendWithBearerAuthAsync(endpoint, json, apiKey);
+            }
+            catch (AIProviderException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                try
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    var error = CreateExceptionFromStatus(response.StatusCode, message);
-                    lastError = error;
+                    return await SendWithApiKeyAuthAsync(endpoint, json, apiKey);
+                }
+                catch (AIProviderException fallbackEx)
+                {
+                    lastError = fallbackEx;
 
-                    if (error.FailureType == ProviderFailureType.Authentication ||
-                        error.FailureType == ProviderFailureType.RateLimit ||
-                        error.FailureType == ProviderFailureType.ServerError)
+                    if (fallbackEx.FailureType == ProviderFailureType.Authentication ||
+                        fallbackEx.FailureType == ProviderFailureType.RateLimit ||
+                        fallbackEx.FailureType == ProviderFailureType.ServerError)
                     {
                         continue;
                     }
 
-                    throw error;
+                    throw;
                 }
+            }
+            catch (AIProviderException ex)
+            {
+                lastError = ex;
 
-                var responseText = await response.Content.ReadAsStringAsync();
-                var responseObj = JsonSerializer.Deserialize<JsonElement>(responseText);
-                if (responseObj.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                if (ex.FailureType == ProviderFailureType.Authentication ||
+                    ex.FailureType == ProviderFailureType.RateLimit ||
+                    ex.FailureType == ProviderFailureType.ServerError)
                 {
-                    var firstChoice = choices[0];
-                    if (firstChoice.TryGetProperty("message", out var message) &&
-                        message.TryGetProperty("content", out var contentProperty))
-                    {
-                        var command = contentProperty.GetString()?.Trim();
-                        return AIProviderPromptHelper.ExtractCommand(command ?? string.Empty);
-                    }
+                    continue;
                 }
 
-                throw new AIProviderException(ProviderId, ProviderFailureType.Unknown, "Invalid response format from Azure OpenAI");
+                throw;
             }
             catch (TaskCanceledException ex)
             {
@@ -112,6 +109,59 @@ public class AzureOpenAIProvider : IAIProvider
         throw lastError ?? new AIProviderException(ProviderId, ProviderFailureType.Unknown, "Azure OpenAI request failed");
     }
 
+    private async Task<string> SendWithBearerAuthAsync(string endpoint, string json, string apiKey)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        return await SendRequestAsync(httpRequest);
+    }
+
+    private async Task<string> SendWithApiKeyAuthAsync(string endpoint, string json, string apiKey)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        httpRequest.Headers.Add("api-key", apiKey);
+        httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        return await SendRequestAsync(httpRequest);
+    }
+
+    private async Task<string> SendRequestAsync(HttpRequestMessage httpRequest)
+    {
+        using var response = await _httpClient.SendAsync(httpRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await response.Content.ReadAsStringAsync();
+            throw CreateExceptionFromStatus(response.StatusCode, message);
+        }
+
+        var responseText = await response.Content.ReadAsStringAsync();
+        var responseObj = JsonSerializer.Deserialize<JsonElement>(responseText);
+        if (responseObj.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+        {
+            var firstChoice = choices[0];
+            if (firstChoice.TryGetProperty("message", out var message) &&
+                message.TryGetProperty("content", out var contentProperty))
+            {
+                var command = contentProperty.GetString()?.Trim();
+                return AIProviderPromptHelper.ExtractCommand(command ?? string.Empty);
+            }
+        }
+
+        throw new AIProviderException(ProviderId, ProviderFailureType.Unknown, "Invalid response format from Azure OpenAI");
+    }
+
+    private string BuildEndpoint()
+    {
+        var endpoint = _config.AzureOpenAI.Endpoint.Trim();
+        if (endpoint.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        {
+            return endpoint;
+        }
+
+        endpoint = endpoint.TrimEnd('/');
+        return $"{endpoint}/chat/completions";
+    }
+
     private void ValidateConfiguration()
     {
         if (!_config.AzureOpenAI.Enabled)
@@ -121,7 +171,7 @@ public class AzureOpenAIProvider : IAIProvider
 
         if (string.IsNullOrWhiteSpace(_config.AzureOpenAI.Endpoint))
         {
-            throw new AIProviderException(ProviderId, ProviderFailureType.Configuration, "Azure OpenAI endpoint is not configured");
+            throw new AIProviderException(ProviderId, ProviderFailureType.Configuration, "Azure OpenAI endpoint is not configured (expected Foundry/OpenAI-v1 base URL)");
         }
 
         if (_config.AzureOpenAI.ApiKeys is null || _config.AzureOpenAI.ApiKeys.Length == 0)
@@ -131,7 +181,7 @@ public class AzureOpenAIProvider : IAIProvider
 
         if (string.IsNullOrWhiteSpace(_config.AzureOpenAI.Model))
         {
-            throw new AIProviderException(ProviderId, ProviderFailureType.Configuration, "Azure OpenAI model is not configured");
+            throw new AIProviderException(ProviderId, ProviderFailureType.Configuration, "Azure OpenAI model is not configured (expected deployment/model name for Foundry)");
         }
     }
 
