@@ -1,0 +1,115 @@
+{
+  "az account": [
+    "subscription",
+    "subscriptions",
+    "tenant",
+    "tenants",
+    "account",
+    "login",
+    "current subscription",
+    "set subscription"
+  ],
+  "az group": [
+    "resource group",
+    "resource groups"
+  ],
+  "az resource": [
+    "resource",
+    "resources",
+    "list resources"
+  ],
+  "az aks": [
+    "aks",
+    "kubernetes cluster",
+    "azure kubernetes"
+  ],
+  "az storage account": [
+    "storage account",
+    "storage accounts"
+  ],
+  "az keyvault": [
+    "key vault",
+    "keyvault",
+    "secrets"
+  ],
+  "az webapp": [
+    "webapp",
+    "web app",
+    "app service"
+  ],
+  "az vm": [
+    "vm",
+    "vms",
+    "virtual machine",
+    "virtual machines"
+  ],
+  "az": [
+    "azure",
+    "az",
+    "subscription",
+    "subscriptions",
+    "tenant",
+    "resource group",
+    "resource groups",
+    "login",
+    "aks",
+    "storage account",
+    "key vault",
+    "app service",
+    "vm",
+    "virtual machine"
+  ],
+  "git": [
+    "git",
+    "branch",
+    "commit",
+    "remote",
+    "repo",
+    "repository",
+    "status",
+    "stash"
+  ],
+  "git log": [
+    "log",
+    "history",
+    "commit history",
+    "commits",
+    "last commit",
+    "last commits",
+    "author",
+    "authors",
+    "submitter",
+    "submitters",
+    "contributor",
+    "contributors"
+  ],
+  "git status": [
+    "status",
+    "git status",
+    "working tree",
+    "working directory",
+    "current branch",
+    "which branch",
+    "uncommitted",
+    "not yet committed",
+    "unstaged",
+    "staged"
+  ],
+  "docker": [
+    "docker",
+    "container",
+    "containers",
+    "image",
+    "images",
+    "dockerfile"
+  ],
+  "kubectl": [
+    "kubectl",
+    "kubernetes",
+    "pod",
+    "pods",
+    "namespace",
+    "deployment",
+    "cluster"
+  ]
+}

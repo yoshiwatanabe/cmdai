@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "git log",
+    "shell": "any",
+    "source": "cmdai supplement: git log formats",
+    "content": "git log supports limiting the number of commits with -n <number>.\ngit log supports custom output with --format=<format> or --pretty=format:<format>.\nUseful placeholders include %H for commit hash, %h for abbreviated hash, %an for author name, %ae for author email, %cn for committer name, %ce for committer email, %s for subject, and %ad for author date.\nExample: git log -n 5 --format=\"%an\" prints the author names for the last 5 commits."
+  }
+]

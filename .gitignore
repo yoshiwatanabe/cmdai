@@ -64,6 +64,9 @@ cmdai_learning.json
 *.temp
 
 # Environment specific
+.env
+.env.*
+!.env.example
 appsettings.Development.json
 appsettings.Local.json
 
