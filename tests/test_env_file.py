@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from cmdai_next.env_file import _load_env_file
+from cmdai.env_file import _load_env_file
 
 
 def test_load_env_file_sets_missing_values(tmp_path: Path, monkeypatch) -> None:

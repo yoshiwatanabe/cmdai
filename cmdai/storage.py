@@ -13,7 +13,7 @@ def default_db_path() -> Path:
     configured = os.environ.get("CMDAI_DB")
     if configured:
         return Path(configured).expanduser()
-    return Path.home() / ".cmdai" / "cmdai_next.sqlite3"
+    return Path.home() / ".cmdai" / "cmdai.sqlite3"
 
 
 class CacheStore:

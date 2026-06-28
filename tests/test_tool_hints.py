@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cmdai_next.tool_hints import infer_tool_hints
+from cmdai.tool_hints import infer_tool_hints
 
 
 def test_azure_subscription_routes_to_az_account() -> None:

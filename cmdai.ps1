@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $scriptRoot
 try {
-    python -m cmdai_next @args
+    python -m cmdai @args
     exit $LASTEXITCODE
 }
 finally {

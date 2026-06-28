@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cmdai_next.models import CommandCatalogEntry, HelpCapture
-from cmdai_next.storage import CacheStore
+from cmdai.models import CommandCatalogEntry, HelpCapture
+from cmdai.storage import CacheStore
 
 
 def test_upsert_and_search(tmp_path: Path) -> None:

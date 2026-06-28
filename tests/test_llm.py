@@ -1,7 +1,6 @@
-from __future__ import annotations
+from cmdai.llm import build_gemini_payload, get_gemini_model_candidates, normalize_gemini_model
+from cmdai.llm import _extract_text
 
-from cmdai_next.llm import build_gemini_payload, get_gemini_model_candidates, normalize_gemini_model
-from cmdai_next.llm import _extract_text
 
 
 def test_gemini_payload_uses_generate_content_shape() -> None:

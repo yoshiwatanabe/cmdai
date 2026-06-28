@@ -1,122 +1,145 @@
-# CmdAI - AI-Powered CLI Assistant
+# CmdAI
 
-Transform natural language into CLI commands using API-based AI failover.
+CmdAI is a documentation-grounded command-line assistant written in Python.
 
-Default provider chain:
-1. OpenAI
-2. Azure OpenAI
-3. Anthropic Claude
-4. Google Gemini
-5. Pattern fallback (git/az)
+The design goal:
 
-![CmdAI Demo](cmdai-use.gif)
+1. Capture real command help from the machine where the command runs.
+2. Store that help in a portable SQLite database.
+3. Retrieve relevant help snippets for a natural-language request.
+4. Ask an optional LLM to generate a command using only the retrieved snippets.
 
-## Install
+This keeps model knowledge as a reasoning layer, not the source of truth.
 
-```bash
-dotnet tool install --global --add-source . CmdAi.Cli
-```
+## Quick Start
 
-For a complete setup from `git clone` through installing on both Windows and WSL, see `docs/INSTALL.md`.
-
-Additional docs:
-- `docs/SETUP.md`
-- `docs/ARCHITECTURE.md`
-- `docs/CONTRIBUTING.md`
-- `docs/VERSIONING.md`
-- `docs/CICD.md` - **CI/CD Setup & Release Guide**
-
-## WSL (Recommended)
-
-If you want `cmdai` to execute commands inside WSL, install it inside WSL (Linux), not as a Windows `.exe`.
-
-From Windows (build the tool package):
+From the repository root:
 
 ```powershell
-dotnet pack .\src\CmdAi.Cli\CmdAi.Cli.csproj -c Release
+python -m cmdai doctor
+python -m cmdai groom git grep pwsh powershell "git remote"
+python -m cmdai ask "with git, show remote repo urls"
+python -m cmdai ask "find text recursively in ts files" --tool grep --shell powershell
 ```
 
-Then from WSL (install from the Windows-mounted nupkg folder):
-
-```bash
-dotnet tool install --global --add-source /mnt/c/Users/tsuyo/Repos/cmdai/src/CmdAi.Cli/nupkg CmdAi.Cli
-export PATH="$PATH:$HOME/.dotnet/tools"
-cmdai --version
-```
-
-## Configure
-
-Create `~/.env` from `.env.example` and set at least your OpenAI key:
-
-```bash
-AI__OpenAI__ApiKeys__0=your_openai_key
-```
-
-Optional additional fallbacks:
-
-```bash
-AI__AzureOpenAI__Endpoint=https://your-resource.openai.azure.com/openai/v1/
-AI__AzureOpenAI__Model=DeepSeek-R1-0528
-AI__AzureOpenAI__ApiKeys__0=your_azure_key
-AI__Anthropic__ApiKeys__0=your_anthropic_key
-AI__Gemini__ApiKeys__0=your_gemini_key
-```
-
-Azure provider in CmdAI is configured for Azure Foundry/OpenAI-v1 style:
-- `AI__AzureOpenAI__Endpoint` should be a base URL such as `https://<resource>.openai.azure.com/openai/v1/`
-- `AI__AzureOpenAI__Model` should be your deployment/model name (for example `DeepSeek-R1-0528`)
-
-Provider priority is configurable:
-
-```bash
-AI__Providers__0=openai
-AI__Providers__1=azureopenai
-AI__Providers__2=anthropic
-AI__Providers__3=gemini
-```
-
-## Evaluate Models
-
-You can compare OpenAI vs Azure Foundry (DeepSeek) inference quality with opt-in live tests:
+From PowerShell 7:
 
 ```powershell
-$env:RUN_CMD_AI_INTEGRATION_TESTS="true"
-dotnet test --filter "FullyQualifiedName~OpenAIProvider_RealApi_GeneratesCommand|FullyQualifiedName~AzureOpenAIProvider_RealApi_GeneratesCommand"
+.\cmdai.ps1 doctor
+.\cmdai.ps1 doctor --test-llm
+.\cmdai.ps1 groom-shell powershell
+.\cmdai.ps1 groom Get-ChildItem "git remote" --shell powershell
+.\cmdai.ps1 ask "show all files that ends with .pdf in a directory recursively using PowerShell"
+.\cmdai.ps1 ask --no-ai "show all files that ends with .pdf in a directory recursively using PowerShell"
 ```
 
-## Usage
+PowerShell requires `.\` for scripts in the current directory.
 
-```bash
-cmdai "I'm on WSL and need to find CONFIG_ROOT in .ts files recursively"
-cmdai --query "with git, how do I show remote repo urls?"
-cmdai git "delete untracked files"
-cmdai az "list subscriptions"
-cmdai docker "show running containers"
-cmdai kubectl "get pods"
+Azure CLI examples:
+
+```powershell
+.\cmdai.ps1 groom az "az account" "az group" "az resource" "az aks" "az storage account" "az keyvault" "az webapp" "az vm" --shell powershell
+.\cmdai.ps1 ask "with Azure CLI, list my subscriptions"
+.\cmdai.ps1 ask "show Azure resource groups"
 ```
 
-Memory controls:
+Git history example:
 
-```bash
-cmdai memory add "dotnet pack .\\src\\CmdAi.Cli\\CmdAi.Cli.csproj -c Release"
-cmdai memory list --limit 20
-cmdai memory clear
+```powershell
+.\cmdai.ps1 cache show "git log"
+.\cmdai.ps1 ask "show me the list of submitters for the last 5 commits"
+.\cmdai.ps1 cache show "git log"
 ```
 
-## Diagnostics
+If `git log` is not already cached, `ask` infers it from words like commits, history, authors, or submitters and grooms it automatically.
 
-```bash
-cmdai diagnostics
+Normal `ask` is inference-first: it retrieves groomed docs and asks Gemini. Use `--no-ai` only for cache/retrieval debugging.
+
+Usage history and reporting:
+
+```powershell
+.\cmdai.ps1 history
+.\cmdai.ps1 history --limit 5
+.\cmdai.ps1 stats
+.\cmdai.ps1 stats --limit 20
 ```
 
-This reports provider chain, availability, last failover trace, and last memory-query trace.
+Every `ask` records the natural-language request, inferred tool, final command if available, result source, and timestamp in the same SQLite database. These records are the lexical/vector memory layer.
 
-## Notes
+From regular Windows Command Prompt:
 
-- CmdAI no longer uses local LLM/Ollama.
-- Failover across providers happens on transient errors (timeout/network/429/5xx).
-- Pattern fallback is used if all providers fail and fallback is enabled.
+```cmd
+cmdai.cmd doctor
+cmdai.cmd groom Get-ChildItem "git remote" --shell powershell
+cmdai.cmd ask --no-ai "show all files that ends with .pdf in a directory recursively using PowerShell"
+cmdai.cmd ask --tool get-childitem --no-ai "show all .pdf files recursively"
+```
 
-## License
+For common PowerShell requests, you do not need to know the cmdlet name first. Run `.\cmdai.ps1 groom-shell powershell` to build a local command catalog from `Get-Command`, `Get-Help`, and `Get-Command -Syntax`; future asks can discover cmdlets from local metadata instead of hardcoded phrase lists.
 
-MIT
+To run the generated PowerShell command from Command Prompt:
+
+```cmd
+powershell -NoProfile -Command "Get-ChildItem -Path . -Recurse -File -Filter *.pdf"
+```
+
+By default the SQLite database is stored at:
+
+```text
+~\.cmdai\cmdai.sqlite3
+```
+
+To keep it in OneDrive or another shared folder:
+
+```powershell
+$env:CMDAI_DB = "$env:OneDrive\cmdai\cmdai.sqlite3"
+python -m cmdai groom git grep pwsh powershell
+```
+
+## Optional LLM
+
+Without an LLM, `ask` shows the most relevant cached help snippets. With a Google AI Studio Gemini API key, it also produces a candidate command grounded in the snippets.
+
+Create `.env` from `.env.example`:
+
+```cmd
+copy .env.example .env
+notepad .env
+```
+
+Set:
+
+```text
+GEMINI_API_KEY=your-key
+CMDAI_GEMINI_MODEL=gemini-2.5-flash
+```
+
+Then run:
+
+```powershell
+python -m cmdai ask "with git, show remote repo urls"
+```
+
+The loader checks `.env`, the current directory `.env`, and `~\.cmdai\.env`. Real `.env` files are ignored by git; `.env.example` is tracked.
+
+## Commands
+
+```text
+ask <query>                 Resolve a natural-language request.
+groom <tool...>             Capture local help output for tools.
+tools                       List tools with cached documentation.
+cache search <query>        Search cached docs.
+cache show <tool>           Show cached docs for a tool.
+catalog search <query>      Search discovered shell commands.
+history                     List recent asks and generated commands.
+stats                       Show usage by tool, source, and command.
+doctor                      Show runtime and database information.
+```
+
+## Architecture
+
+- `cmdai.storage` owns SQLite schema, FTS search, and portable paths.
+- `cmdai.collector` captures `--help`, `-h`, `help`, and PowerShell `Get-Help`.
+- `cmdai.resolver` infers tools, retrieves snippets, and formats grounded prompts.
+- `cmdai.llm` contains the optional Google AI Studio Gemini API call.
+

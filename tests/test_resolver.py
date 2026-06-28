@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cmdai_next import resolver as resolver_module
-from cmdai_next.models import CommandCatalogEntry, HelpCapture
-from cmdai_next.resolver import infer_tool, resolve_query
-from cmdai_next.storage import CacheStore
+from cmdai import resolver as resolver_module
+from cmdai.models import CommandCatalogEntry, HelpCapture
+from cmdai.resolver import infer_tool, resolve_query
+from cmdai.storage import CacheStore
+
 
 
 def test_infer_tool_from_cached_docs(tmp_path: Path) -> None:
