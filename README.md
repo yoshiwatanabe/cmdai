@@ -83,44 +83,30 @@ To run the generated PowerShell command from Command Prompt:
 powershell -NoProfile -Command "Get-ChildItem -Path . -Recurse -File -Filter *.pdf"
 ```
 
-By default the SQLite database is stored at:
+## Installation & Configuration
 
-```text
-~\.cmdai\cmdai.sqlite3
-```
+All configuration is managed via environment variables or a local `.env` file at the repository root.
 
-To keep it in OneDrive or another shared folder:
-
-```powershell
-$env:CMDAI_DB = "$env:OneDrive\cmdai\cmdai.sqlite3"
-python -m cmdai groom git grep pwsh powershell
-```
-
-## Optional LLM
-
-Without an LLM, `ask` shows the most relevant cached help snippets. With a Google AI Studio Gemini API key, it also produces a candidate command grounded in the snippets.
-
-Create `.env` from `.env.example`:
-
+### 1. Configure Gemini API Key
+Create a `.env` file by copying the template:
 ```cmd
 copy .env.example .env
-notepad .env
 ```
-
-Set:
-
-```text
-GEMINI_API_KEY=your-key
+Inside your `.env` file, configure your Gemini key and model:
+```ini
+GEMINI_API_KEY=your-gemini-key
 CMDAI_GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Then run:
-
-```powershell
-python -m cmdai ask "with git, show remote repo urls"
+### 2. Configure Database Storage (Optional)
+By default, the SQLite database is stored at `~/.cmdai/cmdai.sqlite3`.
+To sync your database across machines via OneDrive, configure the `CMDAI_DB` path in your `.env` file:
+```ini
+CMDAI_DB=C:\Users\tsuyo\OneDrive\Data\cmdai_data\cmdai.sqlite3
 ```
 
-The loader checks `.env`, the current directory `.env`, and `~\.cmdai\.env`. Real `.env` files are ignored by git; `.env.example` is tracked.
+*(Note: CmdAI checks the local repository `.env` file, the current folder `.env`, and your user profile directory `~/.cmdai/.env` in order of precedence)*.
+
 
 ## Commands
 
