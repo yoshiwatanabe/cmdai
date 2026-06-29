@@ -99,6 +99,8 @@ from .storage import CacheStore, default_db_path
 
 def main(argv: list[str] | None = None) -> int:
     raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if not raw_argv:
+        raw_argv = ["--help"]
     commands = {"ask", "groom", "groom-shell", "tools", "history", "stats", "doctor", "cache", "catalog"}
     if raw_argv and raw_argv[0] not in commands and raw_argv[0] not in {"-h", "--help"}:
         raw_argv = ["ask", *raw_argv]
