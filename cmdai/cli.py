@@ -115,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cmdai-next", description="Documentation-grounded CLI assistant")
+    parser = argparse.ArgumentParser(prog="cmdai", description="Documentation-grounded CLI assistant")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     ask = subparsers.add_parser("ask", help="Resolve a natural-language request")
