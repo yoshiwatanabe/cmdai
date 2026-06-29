@@ -247,8 +247,6 @@ def _catalog_candidate_summaries(entries, shell: str) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
     for entry in entries:
         parts = [part for part in [entry.synopsis, entry.syntax, entry.aliases] if part]
-        for capture in capture_tool_help(entry.name, shell=shell, timeout=5)[:2]:
-            parts.append(capture.content[:1600])
         pairs.append((entry.name, " ".join(parts)))
     return pairs
 
