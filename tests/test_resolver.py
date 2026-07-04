@@ -4,8 +4,9 @@ from pathlib import Path
 
 from cmdai import resolver as resolver_module
 from cmdai.models import CommandCatalogEntry, HelpCapture
-from cmdai.resolver import infer_tool, resolve_query
+from cmdai.resolver import _merge_hints, _tools_to_consult, infer_tool, resolve_query
 from cmdai.storage import CacheStore
+from cmdai.tool_hints import ToolHint
 
 
 
@@ -207,3 +208,22 @@ def test_resolve_selects_powershell_file_tool_without_tool_argument(tmp_path: Pa
         assert "get-childitem" in output
     finally:
         store.close()
+
+
+def test_curated_hint_ranks_above_catalog_hint() -> None:
+    curated = ToolHint("get-childitem", "any", 5 + 200, "list directories")
+    catalog = ToolHint("show-azureportal", "powershell", 100, "matched discovered command catalog")
+
+    merged = _merge_hints([catalog], [curated])
+
+    assert merged[0].tool == "get-childitem"
+
+
+def test_tools_to_consult_orders_effective_tool_first_then_hints() -> None:
+    hints = [
+        ToolHint("sort-object", "any", 10, "sort"),
+        ToolHint("get-date", "powershell", 5, "date"),
+        ToolHint("get-item", "powershell", 3, "item"),
+    ]
+
+    assert _tools_to_consult("get-childitem", hints) == ["get-childitem", "sort-object", "get-date"]

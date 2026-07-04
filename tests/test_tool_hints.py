@@ -29,3 +29,17 @@ def test_git_repo_status_routes_to_git_status() -> None:
 
     assert hints[0].tool == "git status"
 
+
+def test_sorted_directories_query_hints_get_childitem_and_sort_object() -> None:
+    hints = infer_tool_hints("show directories sorted by datetime descending order", "powershell")
+
+    tools = {hint.tool for hint in hints}
+    assert "get-childitem" in tools
+    assert "sort-object" in tools
+
+
+def test_list_files_and_directories_routes_to_get_childitem() -> None:
+    hints = infer_tool_hints("list files and directories", "powershell")
+
+    assert hints[0].tool == "get-childitem"
+

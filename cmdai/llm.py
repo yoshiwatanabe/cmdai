@@ -102,6 +102,7 @@ def choose_catalog_candidates(
         "Use only command names from the provided candidates. Return a JSON array of command names, no markdown.\n"
         "Choose commands whose documented purpose performs the requested action. "
         "Do not choose object projection/formatting commands unless the request is specifically about selecting object properties or formatting output.\n"
+        "If none of the candidates' documented purposes perform the requested action, return an empty JSON array [].\n"
         f"User request: {query}\n"
         f"Candidates:\n{candidate_lines}\n"
     )

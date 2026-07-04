@@ -33,6 +33,9 @@ KNOWN_TOOLS = {
     "robocopy",
 }
 
+# catalog hints score at most 100, so boosted curated hints always rank first
+CURATED_HINT_BOOST = 200
+
 
 def resolve_query(
     store: CacheStore,
@@ -54,25 +57,49 @@ def resolve_query_detail(
     auto_groom: bool = True,
 ) -> Resolution:
     hinted_tools = infer_tool_hints(query, shell)
+    curated_hints = [
+        ToolHint(hint.tool, hint.shell, hint.score + CURATED_HINT_BOOST, hint.reason)
+        for hint in hinted_tools
+    ]
     catalog_hints = _catalog_hints(store, query, shell)
-    hinted_tools = _merge_hints(catalog_hints, hinted_tools)
+    hinted_tools = _merge_hints(catalog_hints, curated_hints)
     inferred = infer_tool(query, store)
     if inferred and inferred in {"powershell", "pwsh", "ps"}:
         inferred = None
     effective_tool = tool or inferred or (hinted_tools[0].tool if hinted_tools else None)
     effective_tool = effective_tool.lower() if effective_tool else None
+    tools_to_consult = _tools_to_consult(effective_tool, hinted_tools)
     grooming_note: str | None = None
-    if auto_groom and effective_tool and not store.docs_for_tool(effective_tool, shell=shell, limit=1):
-        captures = capture_tool_help(effective_tool, shell=shell)
-        if captures:
-            store.replace_docs(effective_tool, shell.lower(), captures)
-            grooming_note = f"auto-groomed {effective_tool}"
-        else:
-            grooming_note = f"attempted {effective_tool}, no useful help captured"
-    elif not auto_groom and effective_tool and not store.docs_for_tool(effective_tool, shell=shell, limit=1):
+    if auto_groom:
+        notes: list[str] = []
+        for consult_tool in tools_to_consult:
+            if store.docs_for_tool(consult_tool, shell=shell, limit=1):
+                continue
+            captures = capture_tool_help(consult_tool, shell=shell)
+            if captures:
+                store.replace_docs(consult_tool, shell.lower(), captures)
+                notes.append(f"auto-groomed {consult_tool}")
+            else:
+                notes.append(f"attempted {consult_tool}, no useful help captured")
+        grooming_note = "; ".join(notes) if notes else None
+    elif effective_tool and not store.docs_for_tool(effective_tool, shell=shell, limit=1):
         grooming_note = f"not groomed; run: .\\cmdai-next.ps1 groom \"{effective_tool}\" --shell {shell}"
 
-    hits = store.search_any(query, tool=effective_tool, shell=shell, limit=6) if effective_tool else store.search_any(query, shell=shell, limit=6)
+    hits: list[SearchHit] = []
+    if tools_to_consult:
+        seen_doc_ids: set[int] = set()
+        for consult_tool in tools_to_consult:
+            for hit in store.search_any(query, tool=consult_tool, shell=shell, limit=4):
+                if hit.doc.id in seen_doc_ids:
+                    continue
+                seen_doc_ids.add(hit.doc.id)
+                hits.append(hit)
+                if len(hits) >= 6:
+                    break
+            if len(hits) >= 6:
+                break
+    else:
+        hits = store.search_any(query, shell=shell, limit=6)
     should_offer_grooming = bool(grooming_note and grooming_note.startswith("not groomed;"))
     if not hits and effective_tool and not should_offer_grooming:
         hits = store.search_any(query, shell=shell, limit=6)
@@ -220,6 +247,20 @@ def _catalog_hints(store: CacheStore, query: str, shell: str) -> list[ToolHint]:
         reason = reason_parts[0] if reason_parts else "matched discovered command catalog"
         hints.append(ToolHint(entry.name, "powershell", 100 - index, reason))
     return hints
+
+
+def _tools_to_consult(effective_tool: str | None, hinted_tools: list[ToolHint], limit: int = 3) -> list[str]:
+    tools: list[str] = []
+    if effective_tool:
+        tools.append(effective_tool.lower())
+    for hint in hinted_tools:
+        name = hint.tool.lower()
+        if name in tools:
+            continue
+        tools.append(name)
+        if len(tools) >= limit:
+            break
+    return tools
 
 
 def _merge_hints(*hint_groups: list[ToolHint]) -> list[ToolHint]:
