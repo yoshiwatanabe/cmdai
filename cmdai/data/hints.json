@@ -111,5 +111,40 @@
     "namespace",
     "deployment",
     "cluster"
+  ],
+  "get-childitem": [
+    "list files",
+    "list directories",
+    "list folders",
+    "show files",
+    "show directories",
+    "show folders",
+    "files and directories",
+    "list of files",
+    "directory listing",
+    "directory contents",
+    "folder contents",
+    "child items",
+    "dir",
+    "ls",
+    "gci",
+    "files",
+    "directories",
+    "folders",
+    "folder",
+    "subdirectories"
+  ],
+  "sort-object": [
+    "sort",
+    "sorted",
+    "sorted by",
+    "sort by",
+    "order by",
+    "descending",
+    "ascending",
+    "descending order",
+    "ascending order",
+    "newest first",
+    "oldest first"
   ]
 }
